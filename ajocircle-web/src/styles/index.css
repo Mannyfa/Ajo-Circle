@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/*
+ * Brand tokens. "AjoCircle" is a working name (brief §1.5): change the palette here and the
+ * name in src/app/brand.ts — nothing else hard-codes branding.
+ */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --color-ink: #1f2a44;          /* primary text, headers */
+  --color-ink-soft: #4a5572;
+  --color-paper: #faf7f2;        /* app background */
+  --color-card: #ffffff;
+  --color-line: #e6e0d6;
+  --color-brand: #b4532a;        /* terracotta accent */
+  --color-brand-dark: #8f3f1d;
+  --color-brand-soft: #fbeee6;
+
+  /* Status tones. Never green for scheduled/unverified money (brief §5.6). */
+  --color-tone-neutral: #5b6478;
+  --color-tone-neutral-bg: #eef0f4;
+  --color-tone-info: #1d5fa8;
+  --color-tone-info-bg: #e7f0fb;
+  --color-tone-warn: #8a5a00;
+  --color-tone-warn-bg: #fdf3dc;
+  --color-tone-danger: #a3242a;
+  --color-tone-danger-bg: #fbe9ea;
+  --color-tone-verified: #1e6b45;
+  --color-tone-verified-bg: #e4f4ea;
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-paper text-ink antialiased; }
+  :focus-visible { outline: 3px solid var(--color-brand); outline-offset: 2px; }
+}

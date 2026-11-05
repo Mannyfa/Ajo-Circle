@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AjoCircle.Api/AjoCircle.Api.csproj" />
+    <Project Path="src/AjoCircle.Application/AjoCircle.Application.csproj" />
+    <Project Path="src/AjoCircle.Domain/AjoCircle.Domain.csproj" />
+    <Project Path="src/AjoCircle.Infrastructure/AjoCircle.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AjoCircle.ApiTests/AjoCircle.ApiTests.csproj" />
+    <Project Path="tests/AjoCircle.UnitTests/AjoCircle.UnitTests.csproj" />
+  </Folder>
+</Solution>
