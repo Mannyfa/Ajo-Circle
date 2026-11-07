@@ -659,6 +659,14 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("attempts");
 
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("Email")
+                        .HasColumnName("channel");
+
                     b.Property<string>("CodeHash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -677,6 +685,11 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<string>("Target")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("target");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
@@ -688,6 +701,168 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_contact_verifications_user_id_created_at");
 
                     b.ToTable("contact_verifications", (string)null);
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Identity.IdentityDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("content_type");
+
+                    b.Property<byte[]>("EncryptedContent")
+                        .HasColumnType("bytea")
+                        .HasColumnName("encrypted_content");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sha256");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_identity_documents");
+
+                    b.HasIndex("SubmissionId", "Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ix_identity_documents_submission_id_kind");
+
+                    b.ToTable("identity_documents", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_identity_documents_kind", "kind IN ('IdFront', 'IdBack', 'PassportPhoto')");
+                        });
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Identity.IdentitySubmission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BvnLast4")
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)")
+                        .HasColumnName("bvn_last4");
+
+                    b.Property<string>("BvnProtected")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("bvn_protected");
+
+                    b.Property<DateTimeOffset?>("DataPurgedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_purged_at");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<string>("IdNumberLast4")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)")
+                        .HasColumnName("id_number_last4");
+
+                    b.Property<string>("IdNumberProtected")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("id_number_protected");
+
+                    b.Property<string>("IdType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("id_type");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("level");
+
+                    b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("phone_number");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("ProviderReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_reference");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid?>("ReviewedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_identity_submissions");
+
+                    b.HasIndex("ReviewedBy")
+                        .HasDatabaseName("ix_identity_submissions_reviewed_by");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_identity_submissions_one_pending")
+                        .HasFilter("status = 'Pending'");
+
+                    b.HasIndex("Status", "SubmittedAt")
+                        .HasDatabaseName("ix_identity_submissions_status_submitted_at");
+
+                    b.ToTable("identity_submissions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_identity_submissions_bvn", "level = 'Organizer' OR (bvn_protected IS NULL AND bvn_last4 IS NULL)");
+
+                            t.HasCheckConstraint("ck_identity_submissions_level", "level IN ('Member', 'Organizer')");
+
+                            t.HasCheckConstraint("ck_identity_submissions_status", "status IN ('Pending', 'Approved', 'Rejected')");
+                        });
                 });
 
             modelBuilder.Entity("AjoCircle.Domain.Identity.PasswordResetToken", b =>
@@ -763,11 +938,49 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("email_notifications_enabled");
 
+                    b.Property<string>("IdentityLevel")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("None")
+                        .HasColumnName("identity_level");
+
+                    b.Property<DateTimeOffset?>("IdentityVerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("identity_verified_at");
+
+                    b.Property<bool>("IsOperations")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_operations");
+
+                    b.Property<DateTimeOffset?>("MfaEnabledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("mfa_enabled_at");
+
+                    b.Property<long?>("MfaLastStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("mfa_last_step");
+
+                    b.Property<string>("MfaSecretProtected")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("mfa_secret_protected");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(512)
                         .HasColumnType("character varying(512)")
                         .HasColumnName("password_hash");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("phone_number");
+
+                    b.Property<DateTimeOffset?>("PhoneVerifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("phone_verified_at");
 
                     b.Property<string>("SecurityStamp")
                         .IsRequired()
@@ -791,6 +1004,11 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                     b.HasIndex("Email")
                         .IsUnique()
                         .HasDatabaseName("ix_users_email");
+
+                    b.HasIndex("PhoneNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_users_phone_number")
+                        .HasFilter("phone_number IS NOT NULL");
 
                     b.ToTable("users", (string)null);
                 });
@@ -894,7 +1112,7 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_notifications_email_status", "email_status IN ('Pending', 'Sent', 'Failed', 'Skipped')");
 
-                            t.HasCheckConstraint("ck_notifications_type", "type IN ('MemberJoined', 'GroupReadyToStart', 'GroupStarted', 'GroupCancelled', 'ContributionRecorded', 'ContributionCorrected', 'PayoutRecorded', 'PayoutCorrected', 'DisputeRaised', 'DisputeReply', 'DisputeResolved', 'ContributionDueSoon', 'ContributionOverdue', 'PayoutApproaching', 'MemberExited', 'SavingsCompleted')");
+                            t.HasCheckConstraint("ck_notifications_type", "type IN ('MemberJoined', 'GroupReadyToStart', 'GroupStarted', 'GroupCancelled', 'ContributionRecorded', 'ContributionCorrected', 'PayoutRecorded', 'PayoutCorrected', 'DisputeRaised', 'DisputeReply', 'DisputeResolved', 'ContributionDueSoon', 'ContributionOverdue', 'PayoutApproaching', 'MemberExited', 'SavingsCompleted', 'IdentityApproved', 'IdentityRejected', 'DisputeEscalated', 'DisputeDecided')");
                         });
                 });
 
@@ -1047,11 +1265,37 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("corrective_record_id");
 
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("Decision")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("decision");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("decision_note");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
+
+                    b.Property<DateTimeOffset?>("EscalatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("escalated_at");
+
+                    b.Property<Guid?>("EscalatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("escalated_by");
 
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
@@ -1108,13 +1352,19 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_disputes");
 
+                    b.HasIndex("DecidedBy")
+                        .HasDatabaseName("ix_disputes_decided_by");
+
+                    b.HasIndex("EscalatedBy")
+                        .HasDatabaseName("ix_disputes_escalated_by");
+
                     b.HasIndex("RaisedBy")
                         .HasDatabaseName("ix_disputes_raised_by");
 
                     b.HasIndex("RecordId")
                         .IsUnique()
                         .HasDatabaseName("ux_disputes_one_open_per_record")
-                        .HasFilter("status = 'Open'");
+                        .HasFilter("status <> 'Resolved'");
 
                     b.HasIndex("Reference")
                         .IsUnique()
@@ -1126,17 +1376,24 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                     b.HasIndex("GroupId", "Status")
                         .HasDatabaseName("ix_disputes_group_id_status");
 
+                    b.HasIndex("Status", "EscalatedAt")
+                        .HasDatabaseName("ix_disputes_status_escalated_at");
+
                     b.ToTable("disputes", null, t =>
                         {
                             t.HasCheckConstraint("ck_disputes_category", "category IN ('DidNotHappen', 'WrongAmount', 'WrongDate', 'Other')");
 
+                            t.HasCheckConstraint("ck_disputes_decision", "decision IS NULL OR (decision IN ('RecordUpheld', 'CorrectionRequired') AND decided_by IS NOT NULL AND decided_at IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_disputes_escalated", "status <> 'Escalated' OR escalated_at IS NOT NULL");
+
                             t.HasCheckConstraint("ck_disputes_record_type", "record_type IN ('ContributionRecord', 'PayoutRecord')");
 
-                            t.HasCheckConstraint("ck_disputes_resolution", "resolution IS NULL OR resolution IN ('WithdrawnByMember', 'RecordCorrected', 'RecordReversed')");
+                            t.HasCheckConstraint("ck_disputes_resolution", "resolution IS NULL OR resolution IN ('WithdrawnByMember', 'RecordCorrected', 'RecordReversed', 'UpheldByOperations')");
 
-                            t.HasCheckConstraint("ck_disputes_resolved_fields", "(status = 'Open' AND resolved_at IS NULL AND resolution IS NULL) OR (status = 'Resolved' AND resolved_at IS NOT NULL AND resolution IS NOT NULL AND resolved_by IS NOT NULL)");
+                            t.HasCheckConstraint("ck_disputes_resolved_fields", "(status <> 'Resolved' AND resolved_at IS NULL AND resolution IS NULL) OR (status = 'Resolved' AND resolved_at IS NOT NULL AND resolution IS NOT NULL AND resolved_by IS NOT NULL)");
 
-                            t.HasCheckConstraint("ck_disputes_status", "status IN ('Open', 'Resolved')");
+                            t.HasCheckConstraint("ck_disputes_status", "status IN ('Open', 'Escalated', 'Resolved')");
                         });
                 });
 
@@ -1562,6 +1819,32 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_contact_verifications_users_user_id");
                 });
 
+            modelBuilder.Entity("AjoCircle.Domain.Identity.IdentityDocument", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Identity.IdentitySubmission", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_identity_documents_identity_submissions_submission_id");
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Identity.IdentitySubmission", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReviewedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_identity_submissions_users_reviewed_by");
+
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_identity_submissions_users_user_id");
+                });
+
             modelBuilder.Entity("AjoCircle.Domain.Identity.PasswordResetToken", b =>
                 {
                     b.HasOne("AjoCircle.Domain.Identity.User", null)
@@ -1639,6 +1922,18 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("AjoCircle.Domain.Records.Dispute", b =>
                 {
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("DecidedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_disputes_users_decided_by");
+
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("EscalatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_disputes_users_escalated_by");
+
                     b.HasOne("AjoCircle.Domain.Groups.Group", null)
                         .WithMany()
                         .HasForeignKey("GroupId")

@@ -84,12 +84,19 @@ public sealed class SecurityHeadersMiddleware(RequestDelegate next)
 public static class SessionValidation
 {
     public const string StampClaim = "ajo:stamp";
+    /// <summary>Unix seconds when this session passed the operations second factor.</summary>
+    public const string MfaClaim = "ajo:mfa";
 
-    public static ClaimsPrincipal CreatePrincipal(User user) =>
-        new(new ClaimsIdentity([
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(StampClaim, user.SecurityStamp),
-        ], CookieAuthenticationDefaults.AuthenticationScheme));
+    public static ClaimsPrincipal CreatePrincipal(User user, DateTimeOffset? mfaVerifiedAt = null)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(StampClaim, user.SecurityStamp),
+        };
+        if (mfaVerifiedAt is { } at) claims.Add(new Claim(MfaClaim, at.ToUnixTimeSeconds().ToString()));
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
+    }
 
     /// <summary>Rejects sessions whose user is locked or whose security stamp changed (e.g. password reset).</summary>
     public static async Task ValidateAsync(CookieValidatePrincipalContext ctx)

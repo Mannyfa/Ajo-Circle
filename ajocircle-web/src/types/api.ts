@@ -11,7 +11,12 @@ export type ObligationStatus =
 export type PayoutStatus = 'Scheduled' | 'RecordedByOrganizer' | 'ConfirmedByRecipient' | 'Disputed'
 export type ViewerRole = 'Organizer' | 'Member'
 
-export type Me = { id: string; email: string; displayName: string; contactVerified: boolean; createdAt: string }
+export type IdentityLevel = 'None' | 'Member' | 'Organizer'
+export type Me = {
+  id: string; email: string; displayName: string; contactVerified: boolean; createdAt: string
+  identityLevel: IdentityLevel; phoneVerified: boolean
+  isOperations: boolean; mfaEnabled: boolean; operationsSessionActive: boolean
+}
 
 export type RotatingRules = {
   contributionAmountMinor: number
@@ -142,18 +147,44 @@ export type PayoutDetail = {
 
 // ---- Disputes ----
 export type DisputeCategory = 'DidNotHappen' | 'WrongAmount' | 'WrongDate' | 'Other'
-export type DisputeStatus = 'Open' | 'Resolved'
-export type DisputeResolution = 'WithdrawnByMember' | 'RecordCorrected' | 'RecordReversed'
+export type DisputeStatus = 'Open' | 'Escalated' | 'Resolved'
+export type DisputeResolution = 'WithdrawnByMember' | 'RecordCorrected' | 'RecordReversed' | 'UpheldByOperations'
+export type OperationsDecision = 'RecordUpheld' | 'CorrectionRequired'
 
 export type DisputeSummary = {
   id: string; reference: string; groupId: string; groupName: string; recordType: RecordKind; recordId: string; subjectId: string
   subjectLabel: string; category: DisputeCategory; status: DisputeStatus; resolution: DisputeResolution | null
   raisedByName: string; raisedByYou: boolean; raisedAt: string; resolvedAt: string | null
 }
-export type DisputeMessage = { id: string; authorName: string; isYou: boolean; isOrganizer: boolean; body: string; createdAt: string }
+export type DisputeMessage = { id: string; authorName: string; isYou: boolean; isOrganizer: boolean; isOperations: boolean; body: string; createdAt: string }
 export type DisputeDetail = {
   summary: DisputeSummary; description: string; resolutionNote: string | null; resolvedByName: string | null
   correctiveRecordId: string | null; record: PaymentRecord; messages: DisputeMessage[]; allowedActions: string[]
+  escalation: {
+    canEscalate: boolean; escalationAllowedFrom: string; escalatedAt: string | null; escalatedByName: string | null
+    decision: OperationsDecision | null; decisionNote: string | null; decidedAt: string | null
+  }
+}
+
+// ---- Identity verification & operations (slice 5) ----
+export type IdDocumentType = 'NationalId' | 'InternationalPassport' | 'DriversLicence' | 'VotersCard'
+export type SubmissionStatus = 'Pending' | 'Approved' | 'Rejected'
+export type VerificationStatus = {
+  level: IdentityLevel; phoneMasked: string | null; phoneVerified: boolean
+  latest: { id: string; level: IdentityLevel; status: SubmissionStatus; submittedAt: string; reviewedAt: string | null; rejectionReason: string | null } | null
+}
+export type VerificationQueueItem = {
+  id: string; userName: string; userEmail: string; level: IdentityLevel; idType: IdDocumentType; status: SubmissionStatus; submittedAt: string; reviewedAt: string | null
+}
+export type VerificationDetail = {
+  summary: VerificationQueueItem; phoneMasked: string; idNumberLast4: string; bvnLast4: string | null; sensitiveDataPurged: boolean
+  decisionNote: string | null; reviewedByName: string | null
+  documents: { id: string; kind: 'IdFront' | 'IdBack' | 'PassportPhoto'; contentType: string; sizeBytes: number; available: boolean }[]
+  allowedActions: string[]
+}
+export type AuditSearchItem = {
+  id: string; action: string; entityType: string; entityId: string; groupId: string | null; groupName: string | null
+  actorName: string | null; actorEmail: string | null; metadata: string | null; createdAt: string
 }
 
 // ---- Notifications & settings (slice 3) ----

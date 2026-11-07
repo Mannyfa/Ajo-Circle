@@ -74,7 +74,7 @@ export function RecordStatusBadge({ status, payout }: { status: RecordStatus; pa
 }
 
 export function DisputeStatusBadge({ status }: { status: DisputeStatus }) {
-  return status === 'Open'
-    ? <Badge tone="warn" glyph="!" label="Open" title="Waiting for the organizer to correct the record or the member to withdraw." />
-    : <Badge tone="neutral" glyph="■" label="Resolved" />
+  if (status === 'Open') return <Badge tone="warn" glyph="!" label="Open" title="Waiting for the organizer to correct the record or the member to withdraw." />
+  if (status === 'Escalated') return <Badge tone="danger" glyph="⚑" label="With operations" title="The operations team is investigating." />
+  return <Badge tone="neutral" glyph="■" label="Resolved" />
 }

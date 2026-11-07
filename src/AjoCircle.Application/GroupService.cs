@@ -13,7 +13,7 @@ namespace AjoCircle.Application;
 /// Members who left a fixed-term group early keep read access to their own history and refund.
 /// </summary>
 public sealed class GroupService(IAppDbContext db, ICurrentUser currentUser, IAppClock clock, AuditWriter audit, Notifier notifier,
-    SavingsLedger ledger, SavingsService savings)
+    SavingsLedger ledger, SavingsService savings, IdentityGate gate)
 {
     private Guid Me => currentUser.UserId ?? throw new UnauthenticatedException();
 
@@ -38,12 +38,8 @@ public sealed class GroupService(IAppDbContext db, ICurrentUser currentUser, IAp
         throw new NotFoundException();
     }
 
-    private async Task RequireVerifiedAsync(CancellationToken ct)
-    {
-        var me = Me;
-        if (!await db.Users.AnyAsync(u => u.Id == me && u.ContactVerifiedAt != null, ct))
-            throw new DomainException("contact_unverified", "Verify your email address before doing this.");
-    }
+    /// <summary>Creating or running a group needs organizer-level identity verification (owner decision 7).</summary>
+    private Task RequireOrganizerAsync(CancellationToken ct) => gate.RequireAsync(Me, Domain.Identity.IdentityLevel.Organizer, ct);
 
     /// <summary>The published terms, or the draft before publishing.</summary>
     private async Task<string> TermsJsonAsync(Group g, CancellationToken ct) => g.CurrentSchemeVersionId is { } vid
@@ -316,7 +312,7 @@ public sealed class GroupService(IAppDbContext db, ICurrentUser currentUser, IAp
 
     public async Task<Guid> CreateRotatingAsync(CreateRotatingGroupRequest req, CancellationToken ct)
     {
-        await RequireVerifiedAsync(ct);
+        await RequireOrganizerAsync(ct);
         var g = Group.CreateRotatingDraft(Me, req.Name, req.Rules.ToDomain(), clock.UtcNow);
         db.Groups.Add(g);
         audit.Write(Me, "group.created", "group", g.Id, g.Id, new { g.Name, scheme = g.SchemeType.ToString() });
@@ -334,8 +330,8 @@ public sealed class GroupService(IAppDbContext db, ICurrentUser currentUser, IAp
 
     public async Task PublishAsync(Guid groupId, CancellationToken ct)
     {
-        await RequireVerifiedAsync(ct);
         var g = await OrganizerGroupAsync(groupId, ct);
+        await RequireOrganizerAsync(ct);
         var version = g.Publish(Me, clock.LagosToday, clock.UtcNow);
         db.SchemeVersions.Add(version);
         audit.Write(Me, "group.published", "group", g.Id, g.Id, new { schemeVersion = version.Version, schemeVersionId = version.Id });
@@ -347,6 +343,7 @@ public sealed class GroupService(IAppDbContext db, ICurrentUser currentUser, IAp
         await using var tx = await db.BeginTransactionAsync(ct);
         var g = await db.LockGroupAsync(groupId, ct);
         if (g is null || !g.IsOrganizer(Me)) throw new NotFoundException();
+        await RequireOrganizerAsync(ct);
         var members = await db.GroupMemberships.Where(m => m.GroupId == g.Id && m.Status == MembershipStatus.Active).ToListAsync(ct);
         g.CloseEnrolment(members.Count, clock.UtcNow);
         await AssignJoinOrderIfNeededAsync(g, members, Me, ct);
@@ -373,6 +370,7 @@ public sealed class GroupService(IAppDbContext db, ICurrentUser currentUser, IAp
         await using var tx = await db.BeginTransactionAsync(ct);
         var g = await db.LockGroupAsync(groupId, ct);
         if (g is null || !g.IsOrganizer(Me)) throw new NotFoundException();
+        await RequireOrganizerAsync(ct);
         if (g.IsFixedTerm) throw new DomainConflictException("scheme_mismatch", "Fixed-term savings groups have no payout order.");
         if (g.Status != GroupStatus.ReadyToStart)
             throw new DomainConflictException("group_not_ready", "Payout order can only be set after enrolment closes and before the group starts.");
@@ -401,6 +399,7 @@ public sealed class GroupService(IAppDbContext db, ICurrentUser currentUser, IAp
         await using var tx = await db.BeginTransactionAsync(ct);
         var g = await db.LockGroupAsync(groupId, ct);
         if (g is null || !g.IsOrganizer(Me)) throw new NotFoundException();
+        await RequireOrganizerAsync(ct);
         if (g.CurrentSchemeVersionId is null) throw new DomainConflictException("group_not_ready", "Publish the group before starting it.");
         var version = await db.SchemeVersions.SingleAsync(v => v.Id == g.CurrentSchemeVersionId, ct);
         var members = await db.GroupMemberships.Where(m => m.GroupId == g.Id && m.Status == MembershipStatus.Active).ToListAsync(ct);

@@ -42,7 +42,7 @@ public sealed class GroupAccess(IAppDbContext db, ICurrentUser currentUser)
 /// The app never moves money: every write here is a statement about something that happened elsewhere.
 /// All writes take the group row lock so concurrent submissions serialize; partial unique indexes back this up.
 /// </summary>
-public sealed class RecordService(IAppDbContext db, GroupAccess access, IAppClock clock, AuditWriter audit, Notifier notifier)
+public sealed class RecordService(IAppDbContext db, GroupAccess access, IAppClock clock, AuditWriter audit, Notifier notifier, IdentityGate gate)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -208,6 +208,7 @@ public sealed class RecordService(IAppDbContext db, GroupAccess access, IAppCloc
     {
         var v = await access.ViewAsync(groupId, ct, lockGroup: true);
         if (!v.IsOrganizer) throw new ForbiddenException("Only the organizer can record or correct payments.");
+        await gate.RequireAsync(access.Me, Domain.Identity.IdentityLevel.Organizer, ct);
         return v;
     }
 
@@ -245,7 +246,7 @@ public sealed class RecordService(IAppDbContext db, GroupAccess access, IAppCloc
         db.RecordAmendments.Add(RecordAmendment.Create(v.Group.Id, kind, record.Id, replacement?.Id, req.Reason, oldValues,
             replacement is null ? null : JsonSerializer.Serialize(replacement.Snapshot(), Json), access.Me, clock.UtcNow));
 
-        var open = await db.Disputes.SingleOrDefaultAsync(d => d.RecordId == record.Id && d.Status == DisputeStatus.Open, ct);
+        var open = await db.Disputes.SingleOrDefaultAsync(d => d.RecordId == record.Id && d.Status != DisputeStatus.Resolved, ct);
         if (open is not null)
         {
             open.Resolve(access.Me, replacement is null ? DisputeResolution.RecordReversed : DisputeResolution.RecordCorrected,
@@ -317,7 +318,7 @@ public sealed class RecordService(IAppDbContext db, GroupAccess access, IAppCloc
         var names = await access.NamesAsync(records.SelectMany(r => new[] { (Guid?)r.RecordedBy, r.ConfirmedBy, r.ReversedBy }), ct);
         return records.Select(r =>
         {
-            var open = disputes.FirstOrDefault(d => d.RecordId == r.Id && d.Status == DisputeStatus.Open);
+            var open = disputes.FirstOrDefault(d => d.RecordId == r.Id && d.Status != DisputeStatus.Resolved);
             var actions = new List<string>();
             if (v.IsOrganizer && writable && r.IsActive) actions.Add("correct");
             var mine = r.IsOwnRecord(access.Me); // an organizer who is also the subject can't confirm or dispute their own entry

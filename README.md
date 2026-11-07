@@ -149,6 +149,32 @@ cd ajocircle-web && npm run build && npm run lint
 - Progress card (brief §7.3): target, scheduled, recorded, not recorded yet, owed back and paid back — kept separate,
   none presented as verified money. Members see their own figures; the organizer sees the group's.
 
+## Slice 5 — identity verification and the operations workspace
+
+- **Identity gate** (decision 7): creating or running a group needs *organizer* verification (phone code, ID document,
+  BVN, passport photo); joining needs *member* verification (phone code, one ID document). Unverified users can sign in
+  and look around; confirming, disputing and leaving a group stay open because they protect members.
+- **Submissions** (`/app/verification`): phone verified by SMS code first; then a multipart upload. File types are read
+  from the bytes (JPEG/PNG/PDF, photo JPEG/PNG only, ≤ 5 MB), never from the browser's label. ID number, BVN and files
+  are encrypted with ASP.NET Core Data Protection; only the last 4 digits are stored in the clear. BVN and photos are
+  not collected for member checks. Documents and full numbers are purged `Identity:DocumentRetentionDays` (default 30)
+  after the decision; the outcome remains.
+- **Operations staff** are granted from the command line, never via the web:
+  `dotnet run --project src/AjoCircle.Api -- grant-operations someone@example.com` (and `revoke-operations`).
+  They must set up two-step sign-in (authenticator-app codes, RFC 6238) and re-enter a code every 12 hours; the server
+  checks role + second factor on every operations request, and the workspace returns 404 to everyone else.
+- **Operations workspace** (`/operations`): identity check queue (view documents and full numbers on demand —
+  every view audited — approve or reject with a reason; staff can't review themselves); escalated disputes
+  (read everything, reply on the thread, decide *record stands* or *needs correcting* — decision 5; staff can't handle
+  a group they belong to); audit log search by group, action, person and date.
+- **Escalation** (decision 6): either party can escalate an open dispute 7 days after it was raised
+  (`Disputes:EscalationAfterDays`). "Record stands" closes the dispute and the record can't be disputed again;
+  "needs correcting" leaves it with the organizer, whose correction closes it.
+- Development: SMS codes go to the Mailpit inbox as emails to `sms-<number>@sms.test`.
+- **Production note:** the Data Protection key ring encrypts identity data and signs session cookies. It must be
+  persisted to shared, backed-up storage (e.g. the database or a key vault) before real data is stored — if the keys
+  are lost, encrypted documents can't be read. In development it lives in your user profile.
+
 ## Product decisions from the owner (7 Nov 2026)
 
 1. **Shared-target savings: the organizer (group admin) decides how the money is shared.** To meet brief §7.3 ("store
@@ -162,7 +188,23 @@ cd ajocircle-web && npm run build && npm run lint
 4. **Disputes that the organizer and member can't settle are investigated by the operations team**, who resolve them.
    This needs the operations workspace (a later slice).
 
+5. **Operations investigators decide the outcome only** (decision of 7 Nov 2026). They can uphold a disputed record
+   or find that it needs correcting; the organizer makes any correction, so no record is edited invisibly.
+6. **A dispute can be escalated to operations only after the organizer has had time to respond** — 7 days from when
+   it was raised (configurable).
+7. **Identity verification before anyone can act.** Organizers: government ID document, BVN, phone number and passport
+   photo, reviewed by the operations team. Members: phone number and one ID document. Unverified users can sign in and
+   look around but can't create, run or join groups.
+
 ## Still open (brief §16.3 — not chosen in code)
+
+- **Lawful basis, retention and a verification provider for identity data.** Brief §11.2 says not to hold BVN or ID
+  documents without a documented need *and* lawful basis, and to prefer a provider's reference over raw documents.
+  Decision 7 is the need; the lawful basis (Nigeria Data Protection Act 2023 — consent wording, data-protection impact
+  assessment, retention period) and a licensed BVN/ID verification provider still need legal review. Until then the
+  app keeps the minimum: data encrypted at rest, documents purged after review, every operations view audited, and
+  only synthetic data in development.
+
 
 Payment partner and fund flow · organizer/member identity verification · post-start amendment approval threshold ·
 default rules (what happens when a member stops paying) · fees · email/SMS vendor · hosting ·
@@ -170,9 +212,8 @@ when a rotating round or group counts as **completed**.
 
 ## Next slices (brief §17.1)
 
-1. Operations workspace — dispute investigation and resolution by the operations team (owner decision 4), audit
-   search, organizer verification.
-2. Reports and exports (contributions, payouts/owed back, outstanding) — CSV.
+1. Reports and exports (contributions, payouts/owed back, outstanding) — CSV.
+2. Persist the Data Protection key ring; choose a licensed BVN/ID verification provider and SMS vendor (open items).
 3. Organizer reminder settings (overdue alerts, timing); reminders for money owed back.
 4. Idempotency keys on record-creating requests; the automated 10-member end-to-end journey (brief §13.4).
 5. Rotating round/group completion rules once the open question above is decided.

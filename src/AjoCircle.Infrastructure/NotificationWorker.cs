@@ -28,6 +28,8 @@ public sealed class NotificationWorker(IServiceScopeFactory scopes, IConfigurati
                     await using var scope = scopes.CreateAsyncScope();
                     var created = await scope.ServiceProvider.GetRequiredService<ReminderScheduler>().RunAsync(stoppingToken);
                     if (created > 0) log.LogInformation("Created {Count} reminder notifications.", created);
+                    var purged = await scope.ServiceProvider.GetRequiredService<IdentityRetention>().PurgeAsync(stoppingToken);
+                    if (purged > 0) log.LogInformation("Purged identity data for {Count} decided checks past retention.", purged);
                     lastReminders = DateTimeOffset.UtcNow;
                 }
 

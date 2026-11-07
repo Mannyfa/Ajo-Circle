@@ -22,7 +22,7 @@ public sealed class SavingsLedger(IAppDbContext db, IAppClock clock)
     /// <summary>Money can't be settled while anyone is disputing a record — the amounts might change.</summary>
     public async Task EnsureNoOpenDisputesAsync(Guid groupId, CancellationToken ct, Guid? onlyMembership = null)
     {
-        var q = db.Disputes.Where(d => d.GroupId == groupId && d.Status == DisputeStatus.Open);
+        var q = db.Disputes.Where(d => d.GroupId == groupId && d.Status != DisputeStatus.Resolved);
         if (onlyMembership is { } mid)
         {
             var records = db.ContributionRecords.Where(r => r.SubjectMembershipId == mid).Select(r => r.Id)
@@ -70,7 +70,8 @@ public sealed class SavingsLedger(IAppDbContext db, IAppClock clock)
 /// before anyone joins; leaving early or a cancellation returns what each member paid; the organizer holds the money,
 /// so the app records what is owed back and the organizer records paying it.
 /// </summary>
-public sealed class SavingsService(IAppDbContext db, ICurrentUser currentUser, IAppClock clock, AuditWriter audit, Notifier notifier, SavingsLedger ledger)
+public sealed class SavingsService(IAppDbContext db, ICurrentUser currentUser, IAppClock clock, AuditWriter audit, Notifier notifier, SavingsLedger ledger,
+    IdentityGate gate)
 {
     private Guid Me => currentUser.UserId ?? throw new UnauthenticatedException();
 
@@ -88,8 +89,7 @@ public sealed class SavingsService(IAppDbContext db, ICurrentUser currentUser, I
     public async Task<Guid> CreateAsync(CreateFixedTermGroupRequest req, CancellationToken ct)
     {
         var me = Me;
-        if (!await db.Users.AnyAsync(u => u.Id == me && u.ContactVerifiedAt != null, ct))
-            throw new DomainException("contact_unverified", "Verify your email address before doing this.");
+        await gate.RequireAsync(me, Domain.Identity.IdentityLevel.Organizer, ct);
         var g = Group.CreateFixedTermDraft(me, req.Name, req.Rules.ToDomain(), clock.UtcNow);
         db.Groups.Add(g);
         audit.Write(me, "group.created", "group", g.Id, g.Id, new { g.Name, scheme = g.SchemeType.ToString(), allocation = req.Rules.Allocation.ToString() });
@@ -111,6 +111,7 @@ public sealed class SavingsService(IAppDbContext db, ICurrentUser currentUser, I
     {
         await using var tx = await db.BeginTransactionAsync(ct);
         var (g, rules) = await LockedFixedTermAsync(groupId, ct);
+        await gate.RequireAsync(Me, Domain.Identity.IdentityLevel.Organizer, ct);
         if (rules.Allocation != SavingsAllocation.OrganizerAssigned)
             throw new DomainConflictException("shares_fixed", "The accepted terms don't let the organizer assign shares.");
         if (g.Status != GroupStatus.ReadyToStart)
@@ -190,6 +191,7 @@ public sealed class SavingsService(IAppDbContext db, ICurrentUser currentUser, I
     {
         await using var tx = await db.BeginTransactionAsync(ct);
         var (g, rules) = await LockedFixedTermAsync(groupId, ct);
+        await gate.RequireAsync(Me, Domain.Identity.IdentityLevel.Organizer, ct);
         var lastDue = FixedTermCalculator.Summarize(rules).LastDueDate;
         if (g.Status == GroupStatus.Active && clock.LagosToday < lastDue)
             throw new DomainConflictException("term_not_finished", $"The term runs until the last contribution on {Notifier.Date(lastDue)}. Complete it after that date.");

@@ -201,7 +201,7 @@ public sealed class RotatingGroupJourneyTests(ApiFixture fx)
         (await c.PostAsJsonAsync("/api/v1/auth/register", new { email = $"u{Guid.NewGuid():N}@example.test", displayName = "Unverified", password = "correct-horse-battery", acceptTerms = true }))
             .EnsureSuccessStatusCode();
         var r = await Json(await c.PostAsJsonAsync("/api/v1/groups", new { name = "Nope", rules = Rules(3) }), (HttpStatusCode)422);
-        Assert.Equal("contact_unverified", r.GetProperty("code").GetString());
+        Assert.Equal("organizer_unverified", r.GetProperty("code").GetString());
     }
 
     [Fact]

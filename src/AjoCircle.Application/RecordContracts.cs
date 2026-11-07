@@ -41,8 +41,8 @@ public sealed record DisputeSummaryDto(
     Guid SubjectId, string SubjectLabel, DisputeCategory Category, DisputeStatus Status, DisputeResolution? Resolution,
     string RaisedByName, bool RaisedByYou, DateTimeOffset RaisedAt, DateTimeOffset? ResolvedAt);
 
-public sealed record DisputeMessageDto(Guid Id, string AuthorName, bool IsYou, bool IsOrganizer, string Body, DateTimeOffset CreatedAt);
+public sealed record DisputeMessageDto(Guid Id, string AuthorName, bool IsYou, bool IsOrganizer, string Body, DateTimeOffset CreatedAt, bool IsOperations = false);
 
 public sealed record DisputeDetailDto(
     DisputeSummaryDto Summary, string Description, string? ResolutionNote, string? ResolvedByName, Guid? CorrectiveRecordId,
-    RecordDto Record, IReadOnlyList<DisputeMessageDto> Messages, IReadOnlyList<string> AllowedActions);
+    RecordDto Record, IReadOnlyList<DisputeMessageDto> Messages, IReadOnlyList<string> AllowedActions, EscalationInfoDto Escalation);

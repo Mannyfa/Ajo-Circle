@@ -6,6 +6,12 @@ namespace AjoCircle.Domain.Identity;
 
 public enum UserStatus { Active, Locked }
 
+/// <summary>
+/// How far a user's identity has been checked (owner decision 7). Members need phone + one ID document; organizers also
+/// need BVN and a passport photo. Organizer level includes everything a member can do.
+/// </summary>
+public enum IdentityLevel { None, Member, Organizer }
+
 public sealed class User
 {
     private User() { }
@@ -24,6 +30,52 @@ public sealed class User
     public bool EmailNotificationsEnabled { get; private set; } = true;
 
     public void SetEmailNotifications(bool enabled) => EmailNotificationsEnabled = enabled;
+
+    // ---- Phone ----
+    /// <summary>E.164, e.g. +2348031234567. Unique across users.</summary>
+    public string? PhoneNumber { get; private set; }
+    public DateTimeOffset? PhoneVerifiedAt { get; private set; }
+    public bool IsPhoneVerified => PhoneVerifiedAt is not null && PhoneNumber is not null;
+
+    public void SetVerifiedPhone(string e164, DateTimeOffset now) { PhoneNumber = e164; PhoneVerifiedAt = now; }
+
+    // ---- Identity ----
+    public IdentityLevel IdentityLevel { get; private set; } = IdentityLevel.None;
+    public DateTimeOffset? IdentityVerifiedAt { get; private set; }
+
+    public bool HasIdentity(IdentityLevel needed) => IdentityLevel >= needed;
+
+    /// <summary>Only ever raises the level: approving a member check never downgrades a verified organizer.</summary>
+    public void GrantIdentity(IdentityLevel level, DateTimeOffset now)
+    {
+        if (level <= IdentityLevel) return;
+        IdentityLevel = level;
+        IdentityVerifiedAt = now;
+    }
+
+    // ---- Operations staff (brief §3, §5.4) ----
+    public bool IsOperations { get; private set; }
+    /// <summary>TOTP secret, encrypted by the application before it reaches this entity.</summary>
+    public string? MfaSecretProtected { get; private set; }
+    public DateTimeOffset? MfaEnabledAt { get; private set; }
+    /// <summary>Last accepted TOTP step, so the same code can't be replayed.</summary>
+    public long? MfaLastStep { get; private set; }
+    public bool IsMfaEnabled => MfaEnabledAt is not null && MfaSecretProtected is not null;
+
+    public void GrantOperations() => IsOperations = true;
+
+    /// <summary>Removing the role also signs the user out everywhere.</summary>
+    public void RevokeOperations() { IsOperations = false; SecurityStamp = NewStamp(); }
+
+    public void BeginMfaSetup(string protectedSecret)
+    {
+        if (IsMfaEnabled) throw new DomainConflictException("mfa_already_enabled", "Two-step sign-in is already set up.");
+        MfaSecretProtected = protectedSecret;
+    }
+
+    public void EnableMfa(long step, DateTimeOffset now) { MfaEnabledAt = now; MfaLastStep = step; }
+
+    public void RecordMfaStep(long step) => MfaLastStep = step;
 
     public bool IsContactVerified => ContactVerifiedAt is not null;
 
@@ -70,7 +122,9 @@ public sealed class User
     private static string NewStamp() => Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
 }
 
-/// <summary>One-time code sent to the user's contact. Only a hash is stored.</summary>
+public enum ContactChannel { Email, Phone }
+
+/// <summary>One-time code sent to the user's email or phone. Only a hash is stored.</summary>
 public sealed class ContactVerification
 {
     public const int MaxAttempts = 5;
@@ -84,13 +138,18 @@ public sealed class ContactVerification
     public DateTimeOffset ExpiresAt { get; private set; }
     public DateTimeOffset? ConsumedAt { get; private set; }
     public int Attempts { get; private set; }
+    public ContactChannel Channel { get; private set; } = ContactChannel.Email;
+    /// <summary>The phone number (E.164) the code was sent to; null for email.</summary>
+    public string? Target { get; private set; }
 
-    public static (ContactVerification Verification, string Code) Create(Guid userId, DateTimeOffset now)
+    public static (ContactVerification Verification, string Code) Create(Guid userId, DateTimeOffset now,
+        ContactChannel channel = ContactChannel.Email, string? target = null)
     {
         var code = RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
         return (new ContactVerification
         {
             Id = Guid.CreateVersion7(now), UserId = userId, CodeHash = Hash(userId, code), CreatedAt = now, ExpiresAt = now + Lifetime,
+            Channel = channel, Target = target,
         }, code);
     }
 

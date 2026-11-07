@@ -14,6 +14,7 @@ const resolutionLabel: Record<DisputeResolution, string> = {
   WithdrawnByMember: 'Withdrawn by the member — record accepted',
   RecordCorrected: 'Organizer corrected the record',
   RecordReversed: 'Organizer reversed the record',
+  UpheldByOperations: 'The operations team upheld the record',
 }
 
 const subjectPath = (d: DisputeSummary) =>
@@ -57,11 +58,14 @@ export function DisputesPage() {
   )
 }
 
-export function DisputeDetailPage() {
+/** Party view by default; with `operations` it's the investigator's view of an escalated case. */
+export function DisputeDetailPage({ operations = false }: { operations?: boolean }) {
   const { disputeId = '' } = useParams()
   const qc = useQueryClient()
-  const key = ['disputes', 'detail', disputeId]
-  const q = useQuery({ queryKey: key, queryFn: () => api.get<DisputeDetail>(`/disputes/${disputeId}`) })
+  const key = ['disputes', operations ? 'ops' : 'detail', disputeId]
+  const base = operations ? `/operations/disputes/${disputeId}` : `/disputes/${disputeId}`
+  const back = operations ? { to: '/operations/disputes', label: 'Escalated disputes' } : { to: '/app/disputes', label: 'Disputes' }
+  const q = useQuery({ queryKey: key, queryFn: () => api.get<DisputeDetail>(base) })
   const [body, setBody] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
   const [note, setNote] = useState('')
@@ -70,26 +74,31 @@ export function DisputeDetailPage() {
     qc.invalidateQueries({ queryKey: ['disputes'] })
     qc.invalidateQueries({ queryKey: ['group', d.summary.groupId] })
   }
-  const reply = useMutation({ mutationFn: () => api.post<DisputeDetail>(`/disputes/${disputeId}/responses`, { body }), onSuccess: (d) => { setBody(''); refresh(d) } })
+  const reply = useMutation({ mutationFn: () => api.post<DisputeDetail>(operations ? `${base}/messages` : `${base}/responses`, { body }), onSuccess: (d) => { setBody(''); refresh(d) } })
+  const escalate = useMutation({ mutationFn: () => api.post<DisputeDetail>(`${base}/escalate`), onSuccess: refresh })
   const withdraw = useMutation({ mutationFn: () => api.post<DisputeDetail>(`/disputes/${disputeId}/withdraw`, { note: note || null }), onSuccess: (d) => { setWithdrawing(false); refresh(d) } })
 
   if (q.isLoading) return <Loading />
-  if (q.error || !q.data) return <><PageHeader title="Dispute" back={{ to: '/app/disputes', label: 'Disputes' }} /><ErrorAlert error={q.error} /></>
+  if (q.error || !q.data) return <><PageHeader title="Dispute" back={back} /><ErrorAlert error={q.error} /></>
   const d = q.data
   const s = d.summary
   const can = (a: string) => d.allowedActions.includes(a)
 
   return (
     <>
-      <PageHeader back={{ to: '/app/disputes', label: 'Disputes' }} title={<span className="font-mono">{s.reference}</span>}
-        subtitle={<span className="flex flex-wrap items-center gap-2"><DisputeStatusBadge status={s.status} /><Link className="underline" to={subjectPath(s)}>{s.subjectLabel}</Link><span>· {s.groupName}</span></span>} />
+      <PageHeader back={back} title={<span className="font-mono">{s.reference}</span>}
+        subtitle={<span className="flex flex-wrap items-center gap-2"><DisputeStatusBadge status={s.status} />
+          {operations ? <span>{s.subjectLabel}</span> : <Link className="underline" to={subjectPath(s)}>{s.subjectLabel}</Link>}<span>· {s.groupName}</span>
+          {operations && <Link className="underline" to={`/operations/audit?groupId=${s.groupId}`}>Group activity</Link>}</span>} />
       <div className="space-y-4">
         {s.status === 'Resolved' && s.resolution && (
           <Alert tone="neutral" title={resolutionLabel[s.resolution]}>
             {d.resolvedByName} · {s.resolvedAt && formatDateTime(s.resolvedAt)}{d.resolutionNote && <> — “{d.resolutionNote}”</>}
           </Alert>
         )}
-        {s.status === 'Open' && (
+        <EscalationPanel d={d} operations={operations} onEscalate={() => escalate.mutate()} busy={escalate.isPending} error={escalate.error} />
+        {operations && can('decide') && <DecisionForm disputeId={disputeId} onDone={refresh} />}
+        {s.status === 'Open' && !operations && (
           <Alert tone="info">
             {can('correct')
               ? <>To resolve this, correct or reverse the record from <Link className="font-semibold underline" to={subjectPath(s)}>the {s.recordType === 'ContributionRecord' ? 'contribution' : 'payout'} page</Link>. Only {s.raisedByName} can withdraw it.</>
@@ -116,7 +125,7 @@ export function DisputeDetailPage() {
             {d.messages.map((m) => (
               <li key={m.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.isYou ? 'ml-auto bg-ink text-white' : 'bg-paper'}`}>
                 <p className="whitespace-pre-wrap">{m.body}</p>
-                <p className={`mt-1 text-[11px] ${m.isYou ? 'text-white/70' : 'text-ink-soft'}`}>{m.isYou ? 'You' : m.authorName}{m.isOrganizer && ' (organizer)'} · {formatDateTime(m.createdAt)}</p>
+                <p className={`mt-1 text-[11px] ${m.isYou ? 'text-white/70' : 'text-ink-soft'}`}>{m.isYou ? 'You' : m.authorName}{m.isOrganizer && ' (organizer)'}{m.isOperations && ' (operations)'} · {formatDateTime(m.createdAt)}</p>
               </li>
             ))}
           </ol>
@@ -152,5 +161,65 @@ export function DisputeDetailPage() {
         )}
       </div>
     </>
+  )
+}
+
+/** Where the dispute stands with operations: when it can be escalated, and any decision (owner decisions 5–6). */
+function EscalationPanel({ d, operations, onEscalate, busy, error }: { d: DisputeDetail; operations: boolean; onEscalate: () => void; busy: boolean; error: unknown }) {
+  const e = d.escalation
+  if (e.decision) return (
+    <Alert tone={e.decision === 'RecordUpheld' ? 'neutral' : 'warn'}
+      title={e.decision === 'RecordUpheld' ? 'Operations upheld the record' : 'Operations found the record needs correcting'}>
+      “{e.decisionNote}”{e.decidedAt && <span className="block text-xs">Decided {formatDateTime(e.decidedAt)}</span>}
+      {e.decision === 'CorrectionRequired' && d.summary.status !== 'Resolved' && <span className="block">The organizer needs to correct or reverse the record; that resolves the dispute.</span>}
+    </Alert>
+  )
+  if (e.escalatedAt) return (
+    <Alert tone="warn" title={operations ? 'Escalated — awaiting your decision' : 'With the operations team'}>
+      Escalated by {e.escalatedByName} on {formatDateTime(e.escalatedAt)}. {operations
+        ? 'Read the record, its history and the conversation, ask either side questions, then decide. You decide the outcome only — the organizer makes any correction.'
+        : 'An investigator will look at the record and the conversation, then decide whether it stands or needs correcting.'}
+    </Alert>
+  )
+  if (operations || d.summary.status !== 'Open') return null
+  return (
+    <Card className="space-y-2">
+      <h2 className="font-bold">Can’t agree?</h2>
+      {e.canEscalate ? (
+        <>
+          <p className="text-sm text-ink-soft">The organizer has had time to respond. You can hand this dispute to our operations team to investigate.</p>
+          <ErrorAlert error={error} />
+          <Button variant="secondary" busy={busy} onClick={onEscalate}>Escalate to the operations team</Button>
+        </>
+      ) : (
+        <p className="text-sm text-ink-soft">The organizer has until {formatDateTime(e.escalationAllowedFrom)} to respond. If it isn’t sorted out by then, either of you can ask the operations team to investigate.</p>
+      )}
+    </Card>
+  )
+}
+
+function DecisionForm({ disputeId, onDone }: { disputeId: string; onDone: (d: DisputeDetail) => void }) {
+  const [decision, setDecision] = useState<'RecordUpheld' | 'CorrectionRequired' | ''>('')
+  const [note, setNote] = useState('')
+  const m = useMutation({ mutationFn: () => api.post<DisputeDetail>(`/operations/disputes/${disputeId}/decision`, { decision, note }), onSuccess: onDone })
+  return (
+    <Card className="space-y-3">
+      <h2 className="font-bold">Your decision</h2>
+      <fieldset className="grid gap-2 sm:grid-cols-2">
+        <legend className="sr-only">Decision</legend>
+        {([['RecordUpheld', 'The record stands', 'Closes the dispute. The member can’t dispute this record again.'],
+           ['CorrectionRequired', 'It needs correcting', 'The organizer must correct or reverse it; that closes the dispute.']] as const).map(([v, t, h]) => (
+          <label key={v} className={`flex cursor-pointer gap-3 rounded-xl p-3 ${decision === v ? 'border-2 border-ink bg-ink/5' : 'border border-line'}`}>
+            <input type="radio" name="decision" checked={decision === v} onChange={() => setDecision(v)} className="mt-1" />
+            <span><span className="block font-semibold">{t}</span><span className="text-sm text-ink-soft">{h}</span></span>
+          </label>
+        ))}
+      </fieldset>
+      <label htmlFor="finding" className="block text-sm font-semibold">Finding (both parties will see this)</label>
+      <textarea id="finding" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)}
+        className="block w-full rounded-xl border border-line bg-card px-3 py-2 text-base focus:border-brand focus:outline-none" />
+      <ErrorAlert error={m.error} />
+      <Button busy={m.isPending} disabled={!decision || note.trim().length < 10} onClick={() => m.mutate()}>Record decision</Button>
+    </Card>
   )
 }

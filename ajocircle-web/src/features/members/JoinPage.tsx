@@ -61,7 +61,13 @@ export function JoinPage() {
               <Link to={`/verify?next=${encodeURIComponent(here)}`} className="font-semibold underline">Enter your code</Link>
             </Alert>
           )}
-          {me?.contactVerified && (
+          {me?.contactVerified && me.identityLevel === 'None' && (
+            <Alert tone="warn" title="Verify your identity to join">
+              Members verify their phone number and one ID document before joining a group, so everyone knows who they’re saving with.{' '}
+              <Link to="/app/verification" className="font-semibold underline">Verify now</Link>, then come back to this link.
+            </Alert>
+          )}
+          {me?.contactVerified && me.identityLevel !== 'None' && (
             <>
               <label className="flex items-start gap-3 text-sm">
                 <input type="checkbox" className="mt-1 size-4 accent-brand" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />

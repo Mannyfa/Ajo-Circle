@@ -8,6 +8,7 @@ public enum NotificationType
     DisputeRaised, DisputeReply, DisputeResolved,
     ContributionDueSoon, ContributionOverdue, PayoutApproaching,
     MemberExited, SavingsCompleted,
+    IdentityApproved, IdentityRejected, DisputeEscalated, DisputeDecided,
 }
 
 /// <summary>Email delivery state. The notification row doubles as the outbox entry (brief §10.5).</summary>

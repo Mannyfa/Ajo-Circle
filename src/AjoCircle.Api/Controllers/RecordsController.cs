@@ -102,6 +102,15 @@ public sealed class DisputesController(DisputeService disputes) : ControllerBase
         return await disputes.GetAsync(disputeId, ct);
     }
 
+    /// <summary>Hands the dispute to the operations team once the organizer's response window has passed.</summary>
+    [EnableRateLimiting("disputes")]
+    [HttpPost("{disputeId:guid}/escalate")]
+    public async Task<DisputeDetailDto> Escalate(Guid disputeId, CancellationToken ct)
+    {
+        await disputes.EscalateAsync(disputeId, ct);
+        return await disputes.GetAsync(disputeId, ct);
+    }
+
     [HttpPost("{disputeId:guid}/withdraw")]
     public async Task<DisputeDetailDto> Withdraw(Guid disputeId, WithdrawDisputeRequest req, CancellationToken ct)
     {

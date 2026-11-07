@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AjoCircle.Application;
 
-public sealed class InvitationService(IAppDbContext db, ICurrentUser currentUser, IAppClock clock, AuditWriter audit, GroupService groups, Notifier notifier)
+public sealed class InvitationService(IAppDbContext db, ICurrentUser currentUser, IAppClock clock, AuditWriter audit, GroupService groups, Notifier notifier,
+    IdentityGate gate)
 {
     private Guid Me => currentUser.UserId ?? throw new UnauthenticatedException();
 
@@ -21,6 +22,7 @@ public sealed class InvitationService(IAppDbContext db, ICurrentUser currentUser
     public async Task<CreatedInvitationDto> CreateAsync(Guid groupId, CreateInvitationRequest req, CancellationToken ct)
     {
         var g = await OrganizerGroupAsync(groupId, ct);
+        await gate.RequireAsync(Me, Domain.Identity.IdentityLevel.Organizer, ct);
         if (g.Status != GroupStatus.OpenForJoining)
             throw new DomainConflictException("group_not_open", "Publish the group before inviting members.");
         var (inv, raw) = GroupInvitation.Create(g.Id, Me, req.ValidityDays ?? GroupInvitation.DefaultValidityDays, req.MaxUses, clock.UtcNow);
@@ -86,8 +88,7 @@ public sealed class InvitationService(IAppDbContext db, ICurrentUser currentUser
     public async Task<JoinResultDto> JoinAsync(string token, JoinGroupRequest req, CancellationToken ct)
     {
         var me = Me;
-        if (!await db.Users.AnyAsync(u => u.Id == me && u.ContactVerifiedAt != null, ct))
-            throw new DomainException("contact_unverified", "Verify your email address before joining a group.");
+        await gate.RequireAsync(me, Domain.Identity.IdentityLevel.Member, ct); // owner decision 7: phone + ID before joining
 
         await using var tx = await db.BeginTransactionAsync(ct);
         var (inv, _) = await FindAsync(token, ct, track: true);

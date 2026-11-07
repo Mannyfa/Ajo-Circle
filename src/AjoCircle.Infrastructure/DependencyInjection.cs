@@ -1,6 +1,7 @@
 using AjoCircle.Application;
 using AjoCircle.Domain.Identity;
 using AjoCircle.Infrastructure.Persistence;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -34,6 +35,21 @@ public static class DependencyInjection
             services.AddSingleton<IEmailSender>(sp => new DevelopmentEmailSender(smtpSender, sp.GetRequiredService<ILogger<DevelopmentEmailSender>>()));
         else if (smtpSender is not null) services.AddSingleton<IEmailSender>(smtpSender);
         else services.AddSingleton<IEmailSender, UnconfiguredEmailSender>();
+
+        // Sensitive values (TOTP secrets, ID numbers, BVN, identity documents) are encrypted with ASP.NET Core Data
+        // Protection. In production the key ring must live in shared, backed-up storage (see README).
+        services.AddDataProtection().SetApplicationName("AjoCircle");
+        services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
+        services.AddSingleton(config.GetSection(AjoCircle.Application.IdentityOptions.Section).Get<AjoCircle.Application.IdentityOptions>() ?? new AjoCircle.Application.IdentityOptions());
+        services.AddSingleton(config.GetSection(DisputeOptions.Section).Get<DisputeOptions>() ?? new DisputeOptions());
+        if (env.IsDevelopment())
+            services.AddSingleton<ISmsSender>(sp => new DevelopmentSmsSender(smtpSender, sp.GetRequiredService<ILogger<DevelopmentSmsSender>>()));
+        else services.AddSingleton<ISmsSender, UnconfiguredSmsSender>();
+        services.AddScoped<IdentityGate>();
+        services.AddScoped<IdentityService>();
+        services.AddScoped<IdentityRetention>();
+        services.AddScoped<OperationsAccess>();
+        services.AddScoped<OperationsService>();
 
         services.AddScoped<Notifier>();
         services.AddScoped<NotificationService>();

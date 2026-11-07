@@ -10,7 +10,16 @@ namespace AjoCircle.Application;
 /// Disputes on organizer-reported records (brief §4.7). Only the member a record is about can raise one; only that
 /// member and the group's organizer can see or reply to it. Other members never see it.
 /// </summary>
-public sealed class DisputeService(IAppDbContext db, GroupAccess access, IAppClock clock, AuditWriter audit, Notifier notifier)
+public sealed class DisputeOptions
+{
+    public const string Section = "Disputes";
+    /// <summary>How long the organizer has to respond before either side can escalate (owner decision 6).</summary>
+    public int EscalationAfterDays { get; init; } = 7;
+    public TimeSpan ResponseWindow => TimeSpan.FromDays(EscalationAfterDays);
+}
+
+public sealed class DisputeService(IAppDbContext db, GroupAccess access, IAppClock clock, AuditWriter audit, Notifier notifier,
+    OperationsAccess ops, DisputeOptions options)
 {
     public async Task<Guid> RaiseAsync(RecordKind kind, Guid recordId, RaiseDisputeRequest req, CancellationToken ct)
     {
@@ -26,7 +35,8 @@ public sealed class DisputeService(IAppDbContext db, GroupAccess access, IAppClo
             : await db.PayoutRecords.SingleAsync(r => r.Id == recordId, ct);
         RecordService.EnsureSubject(v, record);
 
-        var dispute = Dispute.Open(record, kind, access.Me, req.Category, req.Description, clock.UtcNow);
+        var upheld = await db.Disputes.AnyAsync(d => d.RecordId == recordId && d.Resolution == DisputeResolution.UpheldByOperations, ct);
+        var dispute = Dispute.Open(record, kind, access.Me, req.Category, req.Description, clock.UtcNow, upheld);
         db.Disputes.Add(dispute);
         await SyncParentAsync(record, ct);
         audit.Write(access.Me, "dispute.opened", "dispute", dispute.Id, groupId,
@@ -57,19 +67,31 @@ public sealed class DisputeService(IAppDbContext db, GroupAccess access, IAppClo
     public async Task<DisputeDetailDto> GetAsync(Guid disputeId, CancellationToken ct)
     {
         var (d, g, isOrganizer) = await VisibleAsync(disputeId, ct);
-        var me = access.Me;
+        return await DetailAsync(d, g, access.Me, isOrganizer, asOperations: false, ct);
+    }
+
+    private async Task<DisputeDetailDto> DetailAsync(Dispute d, Group g, Guid me, bool isOrganizer, bool asOperations, CancellationToken ct)
+    {
         ExternalRecord record = d.RecordType == RecordKind.ContributionRecord
             ? await db.ContributionRecords.AsNoTracking().SingleAsync(r => r.Id == d.RecordId, ct)
             : await db.PayoutRecords.AsNoTracking().SingleAsync(r => r.Id == d.RecordId, ct);
         var messages = await db.DisputeMessages.AsNoTracking().Where(m => m.DisputeId == d.Id).OrderBy(m => m.CreatedAt).Take(500).ToListAsync(ct);
         var names = await access.NamesAsync(messages.Select(m => (Guid?)m.AuthorId)
-            .Concat([d.RaisedBy, d.ResolvedBy, record.RecordedBy, record.ConfirmedBy, record.ReversedBy]), ct);
+            .Concat([d.RaisedBy, d.ResolvedBy, d.EscalatedBy, record.RecordedBy, record.ConfirmedBy, record.ReversedBy]), ct);
         var labels = await LabelsAsync([d], ct);
 
+        var now = clock.UtcNow;
+        var canEscalate = !asOperations && d.Status == DisputeStatus.Open && now >= d.EscalationAllowedFrom(options.ResponseWindow);
         var actions = new List<string>();
-        if (d.Status == DisputeStatus.Open)
+        if (asOperations)
+        {
+            if (d.Status == DisputeStatus.Escalated) actions.Add("reply");
+            if (d.Status == DisputeStatus.Escalated && d.Decision is null) actions.Add("decide");
+        }
+        else if (d.Status != DisputeStatus.Resolved)
         {
             actions.Add("reply");
+            if (canEscalate) actions.Add("escalate");
             if (d.RaisedBy == me) actions.Add("withdraw");
             var writable = record is PayoutRecord pr
                 ? RecordRules.CanRecordPayout(g, await db.Payouts.AsNoTracking().SingleAsync(p => p.Id == pr.PayoutId, ct))
@@ -78,10 +100,100 @@ public sealed class DisputeService(IAppDbContext db, GroupAccess access, IAppClo
         }
         return new DisputeDetailDto(Summary(d, g, labels, names, me), d.Description, d.ResolutionNote,
             d.ResolvedBy is { } rb ? names.GetValueOrDefault(rb) : null, d.CorrectiveRecordId,
-            RecordService.ToDto(record, names, d.Status == DisputeStatus.Open ? d.Id : null, []),
+            RecordService.ToDto(record, names, d.Status != DisputeStatus.Resolved ? d.Id : null, []),
             messages.Select(m => new DisputeMessageDto(m.Id, names.GetValueOrDefault(m.AuthorId, "Unknown"), m.AuthorId == me,
-                m.AuthorId == g.OrganizerId, m.Body, m.CreatedAt)).ToList(), actions);
+                m.AuthorId == g.OrganizerId, m.Body, m.CreatedAt, IsOperations: m.AuthorId != g.OrganizerId && m.AuthorId != d.RaisedBy)).ToList(),
+            actions,
+            new EscalationInfoDto(canEscalate, d.EscalationAllowedFrom(options.ResponseWindow), d.EscalatedAt,
+                d.EscalatedBy is { } eb ? names.GetValueOrDefault(eb) : null, d.Decision, d.DecisionNote, d.DecidedAt));
     }
+
+    /// <summary>
+    /// Either party hands the dispute to the operations team once the organizer has had the response window
+    /// (owner decision 6). The thread stays visible to both parties.
+    /// </summary>
+    public async Task EscalateAsync(Guid disputeId, CancellationToken ct)
+    {
+        var (peek, g, _) = await VisibleAsync(disputeId, ct);
+        await using var tx = await db.BeginTransactionAsync(ct);
+        await db.LockGroupAsync(peek.GroupId, ct);
+        var d = await db.Disputes.SingleAsync(x => x.Id == disputeId, ct);
+        var me = access.Me;
+        d.Escalate(me, me == d.RaisedBy || me == g.OrganizerId, options.ResponseWindow, clock.UtcNow);
+        audit.Write(me, "dispute.escalated", "dispute", d.Id, d.GroupId, new { d.Reference });
+        var other = me == d.RaisedBy ? g.OrganizerId : d.RaisedBy;
+        notifier.Add(other, NotificationType.DisputeEscalated, g.Id, $"Dispute {d.Reference} was escalated to the operations team",
+            "An investigator will look at the record and the conversation, then decide whether the record stands or needs correcting. You can keep replying on the dispute.",
+            $"/app/disputes/{d.Id}");
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+    }
+
+    // ---------- Operations side ----------
+
+    public async Task<IReadOnlyList<DisputeSummaryDto>> OperationsQueueAsync(DisputeStatus? status, CancellationToken ct)
+    {
+        var staff = await ops.OperatorAsync(ct);
+        var q = from d in db.Disputes join g in db.Groups on d.GroupId equals g.Id where d.EscalatedAt != null select new { d, g };
+        if (status is { } s) q = q.Where(x => x.d.Status == s);
+        var rows = await q.OrderBy(x => x.d.EscalatedAt).Take(200).AsNoTracking().ToListAsync(ct);
+        var labels = await LabelsAsync(rows.Select(r => r.d).ToList(), ct);
+        var names = await access.NamesAsync(rows.Select(r => (Guid?)r.d.RaisedBy), ct);
+        return rows.Select(r => Summary(r.d, r.g, labels, names, staff.Id)).ToList();
+    }
+
+    public async Task<DisputeDetailDto> OperationsDetailAsync(Guid disputeId, CancellationToken ct)
+    {
+        var (staff, d, g) = await OperationsCaseAsync(disputeId, ct);
+        audit.Write(staff.Id, "operations.dispute_viewed", "dispute", d.Id, g.Id, new { d.Reference });
+        await db.SaveChangesAsync(ct);
+        return await DetailAsync(d, g, staff.Id, isOrganizer: false, asOperations: true, ct);
+    }
+
+    public async Task OperationsReplyAsync(Guid disputeId, DisputeMessageRequest req, CancellationToken ct)
+    {
+        var (staff, d, g) = await OperationsCaseAsync(disputeId, ct);
+        if (d.Status != DisputeStatus.Escalated) throw new Domain.Common.DomainConflictException("dispute_not_escalated", "Operations can only reply on escalated disputes.");
+        db.DisputeMessages.Add(DisputeMessage.Create(d, staff.Id, req.Body, clock.UtcNow));
+        audit.Write(staff.Id, "operations.dispute_message_added", "dispute", d.Id, g.Id, new { d.Reference });
+        foreach (var uid in new[] { d.RaisedBy, g.OrganizerId }.Distinct())
+            notifier.Add(uid, NotificationType.DisputeReply, g.Id, $"The operations team replied on dispute {d.Reference}", Clip(req.Body), $"/app/disputes/{d.Id}");
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>The investigator decides the outcome only (owner decision 5); any correction is the organizer's to make.</summary>
+    public async Task DecideAsync(Guid disputeId, OperationsDecisionRequest req, CancellationToken ct)
+    {
+        var (staff, peek, g) = await OperationsCaseAsync(disputeId, ct);
+        await using var tx = await db.BeginTransactionAsync(ct);
+        await db.LockGroupAsync(peek.GroupId, ct);
+        var d = await db.Disputes.SingleAsync(x => x.Id == disputeId, ct);
+        ExternalRecord record = d.RecordType == RecordKind.ContributionRecord
+            ? await db.ContributionRecords.SingleAsync(r => r.Id == d.RecordId, ct)
+            : await db.PayoutRecords.SingleAsync(r => r.Id == d.RecordId, ct);
+        d.Decide(staff.Id, req.Decision, req.Note, record, clock.UtcNow);
+        await SyncParentAsync(record, ct);
+        audit.Write(staff.Id, "operations.dispute_decided", "dispute", d.Id, g.Id, new { d.Reference, decision = req.Decision.ToString() });
+        var (title, body) = req.Decision == OperationsDecision.RecordUpheld
+            ? ($"Operations upheld the record in dispute {d.Reference}", $"The record stands as the organizer reported it, and the dispute is closed. Finding: “{Clip(d.DecisionNote!)}”")
+            : ($"Operations found the record in dispute {d.Reference} needs correcting", $"The organizer needs to correct or reverse the record. Finding: “{Clip(d.DecisionNote!)}”");
+        foreach (var uid in new[] { d.RaisedBy, g.OrganizerId }.Distinct())
+            notifier.Add(uid, NotificationType.DisputeDecided, g.Id, title, body, $"/app/disputes/{d.Id}");
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+    }
+
+    private async Task<(Domain.Identity.User Staff, Dispute Dispute, Group Group)> OperationsCaseAsync(Guid disputeId, CancellationToken ct)
+    {
+        var staff = await ops.OperatorAsync(ct);
+        var row = await (from d in db.Disputes join g in db.Groups on d.GroupId equals g.Id where d.Id == disputeId select new { d, g })
+            .AsNoTracking().SingleOrDefaultAsync(ct);
+        if (row is null || row.d.EscalatedAt is null) throw new NotFoundException(); // operations only see escalated cases
+        await ops.EnsureNoConflictAsync(staff, row.g.Id, ct);
+        return (staff, row.d, row.g);
+    }
+
+    private static string Clip(string s) => s.Length > 200 ? s[..199] + "…" : s;
 
     public async Task AddMessageAsync(Guid disputeId, DisputeMessageRequest req, CancellationToken ct)
     {

@@ -2,6 +2,8 @@ import { createBrowserRouter } from 'react-router-dom'
 import { AppLayout, PublicLayout } from '../components/Layout'
 import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage, VerifyPage } from '../features/auth/AuthPages'
 import { NotificationsPage, SettingsPage } from '../features/notifications/NotificationPages'
+import { VerificationPage } from '../features/identity/VerificationPage'
+import { AuditSearchPage, OperationsDisputesPage, OperationsLayout, VerificationQueuePage, VerificationReviewPage } from '../features/operations/OperationsPages'
 import { CreateGroupPage } from '../features/groups/CreateGroupPage'
 import { DashboardPage } from '../features/groups/DashboardPage'
 import { GroupLayout } from '../features/groups/GroupLayout'
@@ -39,6 +41,7 @@ export const router = createBrowserRouter([
       { path: 'disputes', element: <DisputesPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'verification', element: <VerificationPage /> },
       { path: 'disputes/:disputeId', element: <DisputeDetailPage /> },
       {
         path: 'groups/:groupId',
@@ -51,6 +54,23 @@ export const router = createBrowserRouter([
           { path: 'contributions', element: <GroupContributionsTab /> },
           { path: 'contributions/:obligationId', element: <ContributionDetailPage /> },
           { path: 'activity', element: <GroupActivityTab /> },
+        ],
+      },
+    ],
+  },
+  {
+    // Internal operations workspace (brief §5.5 URL map). Role and second factor are enforced by the API.
+    path: '/operations',
+    element: <AppLayout />,
+    children: [
+      {
+        element: <OperationsLayout />,
+        children: [
+          { index: true, element: <VerificationQueuePage /> },
+          { path: 'verifications/:id', element: <VerificationReviewPage /> },
+          { path: 'disputes', element: <OperationsDisputesPage /> },
+          { path: 'disputes/:disputeId', element: <DisputeDetailPage operations /> },
+          { path: 'audit', element: <AuditSearchPage /> },
         ],
       },
     ],

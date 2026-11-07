@@ -48,12 +48,34 @@ builder.Services.AddRateLimiter(o =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = authLimit, Window = TimeSpan.FromMinutes(1) }));
     o.AddPolicy("invitations", c => RateLimitPartition.GetFixedWindowLimiter(Key(c),
         _ => new FixedWindowRateLimiterOptions { PermitLimit = inviteLimit, Window = TimeSpan.FromMinutes(1) }));
+    var verifyLimit = builder.Configuration.GetValue("RateLimits:VerificationPerMinute", 5);
+    o.AddPolicy("verification", c => RateLimitPartition.GetFixedWindowLimiter(Key(c),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = verifyLimit, Window = TimeSpan.FromMinutes(1) }));
     var disputeLimit = builder.Configuration.GetValue("RateLimits:DisputesPerMinute", 10);
     o.AddPolicy("disputes", c => RateLimitPartition.GetFixedWindowLimiter(Key(c),
         _ => new FixedWindowRateLimiterOptions { PermitLimit = disputeLimit, Window = TimeSpan.FromMinutes(1) }));
 });
 
 var app = builder.Build();
+
+// Staff accounts are granted from the command line, never through the web API:
+//   dotnet run --project src/AjoCircle.Api -- grant-operations someone@example.com
+//   dotnet run --project src/AjoCircle.Api -- revoke-operations someone@example.com
+if (args.Length == 2 && args[0] is "grant-operations" or "revoke-operations")
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (app.Configuration.GetValue("Database:MigrateOnStartup", false)) db.Database.Migrate();
+    var email = AjoCircle.Domain.Identity.User.NormalizeEmail(args[1]);
+    var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email);
+    if (user is null) { Console.Error.WriteLine($"No account with email {email}."); return 1; }
+    if (args[0] == "grant-operations") user.GrantOperations(); else user.RevokeOperations();
+    var audit = new AuditWriter(db, scope.ServiceProvider.GetRequiredService<IAppClock>());
+    audit.Write(null, args[0] == "grant-operations" ? "operations.role_granted" : "operations.role_revoked", "user", user.Id, null, new { via = "cli" });
+    await db.SaveChangesAsync();
+    Console.WriteLine($"{args[0]}: {email} done. They must set up two-step sign-in before using the operations workspace.");
+    return 0;
+}
 
 if (app.Configuration.GetValue("Database:MigrateOnStartup", false))
 {
@@ -75,6 +97,7 @@ app.MapControllers();
 app.MapGet("/api/v1/health", () => Results.Ok(new { status = "ok" }));
 
 app.Run();
+return 0;
 
 public partial class Program;
 
@@ -82,4 +105,7 @@ internal sealed class HttpCurrentUser(IHttpContextAccessor accessor) : ICurrentU
 {
     public Guid? UserId =>
         Guid.TryParse(accessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+
+    public DateTimeOffset? MfaVerifiedAt =>
+        long.TryParse(accessor.HttpContext?.User.FindFirstValue(SessionValidation.MfaClaim), out var s) ? DateTimeOffset.FromUnixTimeSeconds(s) : null;
 }

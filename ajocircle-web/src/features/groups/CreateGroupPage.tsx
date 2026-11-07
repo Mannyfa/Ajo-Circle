@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../../components/Layout'
 import { Alert, Button, Card, ErrorAlert, Field, Select, TextInput } from '../../components/ui'
 import { useMe } from '../../hooks/useMe'
@@ -78,7 +78,14 @@ export function CreateGroupPage() {
         ))}
       </ol>
 
-      {me && !me.contactVerified && <div className="mb-4"><Alert tone="warn">You can plan a group now, but you must verify your email before saving it.</Alert></div>}
+      {me && me.identityLevel !== 'Organizer' && (
+        <div className="mb-4">
+          <Alert tone="warn" title="Organizers verify their identity first">
+            You can plan a group now, but to save it you need to verify as an organizer (ID, BVN, phone and passport photo).{' '}
+            <Link to="/app/verification" className="font-semibold underline">Start verification</Link>
+          </Alert>
+        </div>
+      )}
 
       {step === 0 && (
         <Card className="space-y-5">
@@ -205,7 +212,7 @@ export function CreateGroupPage() {
           <ErrorAlert error={create.error} />
           <div className="flex justify-between gap-2">
             <Button variant="secondary" onClick={() => setStep(1)}>Edit terms</Button>
-            <Button busy={create.isPending} disabled={!me?.contactVerified} onClick={() => create.mutate()}>Save draft</Button>
+            <Button busy={create.isPending} disabled={me?.identityLevel !== 'Organizer'} onClick={() => create.mutate()}>Save draft</Button>
           </div>
         </div>
       )}

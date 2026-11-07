@@ -30,6 +30,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<DisputeMessage> DisputeMessages => Set<DisputeMessage>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<IdentitySubmission> IdentitySubmissions => Set<IdentitySubmission>();
+    public DbSet<IdentityDocument> IdentityDocuments => Set<IdentityDocument>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default) => Database.BeginTransactionAsync(ct);
@@ -61,10 +63,51 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.PasswordHash).HasMaxLength(512);
             e.Property(x => x.SecurityStamp).HasMaxLength(64);
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.PhoneNumber).HasMaxLength(16);
+            e.HasIndex(x => x.PhoneNumber).IsUnique().HasFilter("phone_number IS NOT NULL"); // brief §8.5: unique normalized phone
+            e.Property(x => x.IdentityLevel).HasConversion<string>().HasMaxLength(20).HasDefaultValue(IdentityLevel.None).HasSentinel((IdentityLevel)(-1));
+            e.Property(x => x.MfaSecretProtected).HasMaxLength(1000);
+        });
+
+        b.Entity<IdentitySubmission>(e =>
+        {
+            e.ToTable("identity_submissions", t =>
+            {
+                t.HasCheckConstraint("ck_identity_submissions_status", StatusCheck<IdentitySubmissionStatus>("status"));
+                t.HasCheckConstraint("ck_identity_submissions_level", "level IN ('Member', 'Organizer')");
+                t.HasCheckConstraint("ck_identity_submissions_bvn", "level = 'Organizer' OR (bvn_protected IS NULL AND bvn_last4 IS NULL)");
+            });
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.ReviewedBy).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Level).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.IdType).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.IdNumberProtected).HasMaxLength(1000);
+            e.Property(x => x.IdNumberLast4).HasMaxLength(4);
+            e.Property(x => x.BvnProtected).HasMaxLength(1000);
+            e.Property(x => x.BvnLast4).HasMaxLength(4);
+            e.Property(x => x.PhoneNumber).HasMaxLength(16);
+            e.Property(x => x.Provider).HasMaxLength(40);
+            e.Property(x => x.ProviderReference).HasMaxLength(200);
+            e.Property(x => x.DecisionNote).HasMaxLength(500);
+            e.HasIndex(x => x.UserId).IsUnique().HasFilter("status = 'Pending'").HasDatabaseName("ux_identity_submissions_one_pending");
+            e.HasIndex(x => new { x.Status, x.SubmittedAt });
+        });
+
+        b.Entity<IdentityDocument>(e =>
+        {
+            e.ToTable("identity_documents", t => t.HasCheckConstraint("ck_identity_documents_kind", StatusCheck<IdentityDocumentKind>("kind")));
+            e.HasOne<IdentitySubmission>().WithMany().HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Restrict);
+            e.Property(x => x.Kind).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.ContentType).HasMaxLength(40);
+            e.Property(x => x.Sha256).HasMaxLength(64);
+            e.HasIndex(x => new { x.SubmissionId, x.Kind }).IsUnique();
         });
 
         b.Entity<ContactVerification>(e =>
         {
+            e.Property(x => x.Channel).HasConversion<string>().HasMaxLength(10).HasDefaultValue(ContactChannel.Email).HasSentinel((ContactChannel)(-1));
+            e.Property(x => x.Target).HasMaxLength(16);
             e.ToTable("contact_verifications");
             e.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
             e.Property(x => x.CodeHash).HasMaxLength(64);
@@ -248,7 +291,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
                 t.HasCheckConstraint("ck_disputes_category", StatusCheck<DisputeCategory>("category"));
                 t.HasCheckConstraint("ck_disputes_resolution", $"resolution IS NULL OR {StatusCheck<DisputeResolution>("resolution")}");
                 t.HasCheckConstraint("ck_disputes_resolved_fields",
-                    "(status = 'Open' AND resolved_at IS NULL AND resolution IS NULL) OR (status = 'Resolved' AND resolved_at IS NOT NULL AND resolution IS NOT NULL AND resolved_by IS NOT NULL)");
+                    "(status <> 'Resolved' AND resolved_at IS NULL AND resolution IS NULL) OR (status = 'Resolved' AND resolved_at IS NOT NULL AND resolution IS NOT NULL AND resolved_by IS NOT NULL)");
+                t.HasCheckConstraint("ck_disputes_escalated", "status <> 'Escalated' OR escalated_at IS NOT NULL");
+                t.HasCheckConstraint("ck_disputes_decision", $"decision IS NULL OR ({StatusCheck<OperationsDecision>("decision")} AND decided_by IS NOT NULL AND decided_at IS NOT NULL)");
             });
             e.HasOne<Group>().WithMany().HasForeignKey(x => x.GroupId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<User>().WithMany().HasForeignKey(x => x.RaisedBy).OnDelete(DeleteBehavior.Restrict);
@@ -261,7 +306,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Description).HasMaxLength(Dispute.MaxDescription);
             e.Property(x => x.ResolutionNote).HasMaxLength(500);
             e.HasIndex(x => x.Reference).IsUnique();
-            e.HasIndex(x => x.RecordId).IsUnique().HasFilter("status = 'Open'").HasDatabaseName("ux_disputes_one_open_per_record");
+            // One unresolved dispute per record, whether it's still with the parties or escalated to operations.
+            e.HasIndex(x => x.RecordId).IsUnique().HasFilter("status <> 'Resolved'").HasDatabaseName("ux_disputes_one_open_per_record");
+            e.Property(x => x.Decision).HasConversion<string>().HasMaxLength(30);
+            e.Property(x => x.DecisionNote).HasMaxLength(1000);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.EscalatedBy).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<User>().WithMany().HasForeignKey(x => x.DecidedBy).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.Status, x.EscalatedAt });
             e.HasIndex(x => new { x.GroupId, x.Status });
             e.HasIndex(x => x.RaisedBy);
         });

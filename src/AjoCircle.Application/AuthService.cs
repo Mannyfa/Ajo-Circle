@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 namespace AjoCircle.Application;
 
 public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, IEmailSender email, EmailTemplates templates, IAppClock clock, AuditWriter audit,
+    ICurrentUser currentUser,
     ILogger<AuthService> log)
 {
     public async Task<User> RegisterAsync(RegisterRequest req, CancellationToken ct)
@@ -129,8 +130,14 @@ public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, IEmai
     public async Task<MeDto> GetMeAsync(Guid userId, CancellationToken ct)
     {
         var u = await db.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == userId, ct) ?? throw new UnauthenticatedException();
-        return new MeDto(u.Id, u.Email, u.DisplayName, u.IsContactVerified, u.CreatedAt);
+        return ToMe(u);
     }
+
+    /// <summary>Operations sessions need a second factor in the last 12 hours.</summary>
+    public static readonly TimeSpan OperationsSessionLifetime = TimeSpan.FromHours(12);
+
+    private MeDto ToMe(User u) => new(u.Id, u.Email, u.DisplayName, u.IsContactVerified, u.CreatedAt, u.IdentityLevel, u.IsPhoneVerified,
+        u.IsOperations, u.IsMfaEnabled, u.IsOperations && u.IsMfaEnabled && currentUser.MfaVerifiedAt is { } at && clock.UtcNow - at < OperationsSessionLifetime);
 
     public async Task<MeDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest req, CancellationToken ct)
     {
@@ -138,7 +145,7 @@ public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, IEmai
         u.UpdateDisplayName(req.DisplayName);
         audit.Write(userId, "user.profile_updated", "user", userId, null);
         await db.SaveChangesAsync(ct);
-        return new MeDto(u.Id, u.Email, u.DisplayName, u.IsContactVerified, u.CreatedAt);
+        return ToMe(u);
     }
 }
 

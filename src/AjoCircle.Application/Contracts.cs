@@ -10,7 +10,8 @@ public sealed record VerifyContactRequest(string Code);
 public sealed record UpdateProfileRequest(string DisplayName);
 public sealed record ForgotPasswordRequest(string Email);
 public sealed record ResetPasswordRequest(string Token, string NewPassword);
-public sealed record MeDto(Guid Id, string Email, string DisplayName, bool ContactVerified, DateTimeOffset CreatedAt);
+public sealed record MeDto(Guid Id, string Email, string DisplayName, bool ContactVerified, DateTimeOffset CreatedAt,
+    Domain.Identity.IdentityLevel IdentityLevel, bool PhoneVerified, bool IsOperations, bool MfaEnabled, bool OperationsSessionActive);
 
 // ---- Money ----
 public sealed record MoneyDto(long AmountMinor, string Currency);

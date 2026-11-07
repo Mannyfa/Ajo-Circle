@@ -75,6 +75,7 @@ export function AppLayout() {
             <NavLink to="/app" end className={tab}>My groups</NavLink>
             <NavLink to="/app/groups/new" className={tab}>New group</NavLink>
             <NavLink to="/app/disputes" className={tab}>Disputes</NavLink>
+            {me.isOperations && <NavLink to="/operations" className={tab}>Operations</NavLink>}
           </nav>
           <div className="flex items-center gap-1 text-sm">
             <NotificationBell />
@@ -91,10 +92,17 @@ export function AppLayout() {
           </div>
         </div>
       </header>
-      {!me.contactVerified && (
+      {!me.contactVerified ? (
         <div className="mx-auto max-w-5xl px-4 pt-4">
           <Alert tone="warn" title="Verify your email to create or join groups.">
             <Link to="/verify" className="font-semibold underline">Enter your verification code</Link>
+          </Alert>
+        </div>
+      ) : me.identityLevel === 'None' && !me.isOperations && location.pathname !== '/app/verification' && (
+        <div className="mx-auto max-w-5xl px-4 pt-4">
+          <Alert tone="warn" title="Verify your identity to create or join groups.">
+            It takes a few minutes: your phone number and an ID document (organizers also give their BVN and a passport photo).{' '}
+            <Link to="/app/verification" className="font-semibold underline">Start verification</Link>
           </Alert>
         </div>
       )}

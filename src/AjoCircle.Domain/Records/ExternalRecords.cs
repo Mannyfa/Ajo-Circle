@@ -132,6 +132,13 @@ public abstract class ExternalRecord
         ConfirmedAt = now;
     }
 
+    /// <summary>Operations upheld the record: it stands as the organizer's report again (not as the member's confirmation).</summary>
+    public void RestoreAfterUpheld()
+    {
+        if (Status != RecordStatus.Disputed) throw new DomainConflictException("record_not_disputed", "This record is not under dispute.");
+        Status = RecordStatus.RecordedByOrganizer;
+    }
+
     public void Reverse(Guid actorId, string reason, DateTimeOffset now)
     {
         if (Status == RecordStatus.Reversed)

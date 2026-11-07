@@ -28,6 +28,8 @@ public interface IAppDbContext
     DbSet<DisputeMessage> DisputeMessages { get; }
     DbSet<Notification> Notifications { get; }
     DbSet<PasswordResetToken> PasswordResetTokens { get; }
+    DbSet<IdentitySubmission> IdentitySubmissions { get; }
+    DbSet<IdentityDocument> IdentityDocuments { get; }
     DbSet<AuditLog> AuditLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
@@ -44,6 +46,8 @@ public interface IAppDbContext
 public interface ICurrentUser
 {
     Guid? UserId { get; }
+    /// <summary>When this session passed the operations second factor; null if it hasn't.</summary>
+    DateTimeOffset? MfaVerifiedAt { get; }
 }
 
 public interface IAppClock

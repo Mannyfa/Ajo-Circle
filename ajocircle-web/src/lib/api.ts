@@ -24,16 +24,18 @@ const BASE = '/api/v1'
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   let res: Response
+  const isForm = body instanceof FormData
   try {
     res = await fetch(BASE + path, {
       method,
       credentials: 'same-origin',
       headers: {
         Accept: 'application/json',
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        // FormData sets its own multipart boundary header.
+        ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}),
         ...(method !== 'GET' ? { 'X-AjoCircle-Request': '1' } : {}),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     })
   } catch {
     throw new ApiError(0, 'We could not reach the server. Check your connection and try again.', 'network')
@@ -63,6 +65,7 @@ function safeJson(text: string): unknown {
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+  postForm: <T>(path: string, form: FormData) => request<T>('POST', path, form),
   patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
   del: <T>(path: string) => request<T>('DELETE', path),
