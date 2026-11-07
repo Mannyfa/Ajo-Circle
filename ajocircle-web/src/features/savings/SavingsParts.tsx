@@ -20,7 +20,7 @@ export function SavingsProgressCard({ s }: { s: SavingsProgress }) {
           <span className="tabular-nums"><strong>{formatMoney(s.recorded)}</strong> <span className="text-ink-soft">of {formatMoney(s.target)} target</span></span>
         </div>
         <div className="mt-1 h-2 rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Recorded towards target">
-          <div className="h-2 rounded-full bg-tone-info" style={{ width: `${pct}%` }} />
+          <div className="h-2 rounded-full bg-teal" style={{ width: `${pct}%` }} />
         </div>
       </div>
       <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">

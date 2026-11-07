@@ -68,7 +68,7 @@ export function CreateGroupPage() {
 
   return (
     <>
-      <PageHeader title="New group" back={{ to: '/app', label: 'My groups' }} />
+      <PageHeader title="New group" back={{ to: '/app/groups', label: 'My groups' }} />
       <ol className="mb-5 flex gap-2 text-xs font-semibold" aria-label="Progress">
         {steps.map((s, i) => (
           <li key={s} aria-current={i === step ? 'step' : undefined}
@@ -94,7 +94,7 @@ export function CreateGroupPage() {
             <div className="grid gap-2 sm:grid-cols-3">
               {kinds.map((k) => (
                 <label key={k.value} className={`flex cursor-pointer gap-3 rounded-lg p-3 ${kind === k.value ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
-                  <input type="radio" name="scheme" value={k.value} checked={kind === k.value} onChange={() => { setKind(k.value); preview.reset() }} className="mt-1 accent-brand" />
+                  <input type="radio" name="scheme" value={k.value} checked={kind === k.value} onChange={() => { setKind(k.value); preview.reset() }} className="mt-1 accent-teal" />
                   <span><span className="block font-semibold">{k.title}</span><span className="text-sm text-ink-soft">{k.text}</span></span>
                 </label>
               ))}

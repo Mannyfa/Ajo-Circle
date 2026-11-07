@@ -1,48 +1,61 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — corporate fintech direction: deep navy brand, cool neutral surfaces, slate text, restrained radius.
- * "AjoCircle" is a working name (brief §1.5): change the palette here and the name in src/app/brand.ts — nothing else
- * hard-codes branding. Text/background pairs below meet WCAG AA (4.5:1) on white and on --color-paper.
+ * Design tokens — brand guide from the Product & UI Engineering Specification §4:
+ * Midnight Navy primary, Deep Teal secondary, Mint Teal accent, Cloud White canvas, Slate muted text, amber for warnings only.
+ * "AjoCircle" is a working name: change the palette here and the name in src/app/brand.ts — nothing else hard-codes branding.
+ * Text/background pairs meet WCAG AA (4.5:1). Mint (#14B8A6) is decorative only — it is too light for text on white.
  */
 @theme {
   --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
-  --color-ink: #0f172a;          /* primary text — 17.9:1 on white */
-  --color-ink-soft: #475569;     /* secondary text — 7.6:1 on white */
-  --color-paper: #f4f6f9;        /* app background */
+  /* Neutrals */
+  --color-ink: #102a43;          /* Midnight Navy — headings and body text, 14.6:1 on white */
+  --color-ink-soft: #64748b;     /* Slate — muted text, 4.76:1 on white, 4.55:1 on canvas */
+  --color-paper: #f8fafc;        /* Cloud White — app canvas */
   --color-card: #ffffff;
   --color-line: #e2e8f0;
   --color-line-strong: #cbd5e1;
 
-  --color-brand: #0b3b66;        /* deep navy — primary actions, active nav */
-  --color-brand-dark: #072a4a;
-  --color-brand-soft: #e8f0f8;
-  --color-accent: #b7791f;       /* gold — highlights only, never status */
+  /* Brand */
+  --color-brand: #102a43;        /* Midnight Navy — primary actions, wordmark */
+  --color-brand-dark: #0a1c2e;
+  --color-brand-soft: #eaf0f6;
+  --color-teal: #0f766e;         /* Deep Teal — links, active navigation, secondary emphasis (5.5:1 on white) */
+  --color-teal-dark: #0b5c55;
+  --color-teal-soft: #e7f5f3;
+  --color-mint: #14b8a6;         /* Mint Teal — decorative accents only (bars, dots, rings) */
+  --color-amber: #f59e0b;        /* Attention — borders and icons on warnings only */
 
-  /* Status tones. Never green for scheduled/unverified money (brief §5.6); green is provider-verified only. */
+  /* Status tones. Text colours are darkened for contrast; green is reserved for provider-verified money. */
   --color-tone-neutral: #475569;
   --color-tone-neutral-bg: #f1f5f9;
-  --color-tone-info: #1d4ed8;
-  --color-tone-info-bg: #eff4ff;
-  --color-tone-warn: #8a5300;
-  --color-tone-warn-bg: #fff7e6;
+  --color-tone-info: #0f5f8a;
+  --color-tone-info-bg: #ecf6fc;
+  --color-tone-warn: #92400e;
+  --color-tone-warn-bg: #fffbeb;
   --color-tone-danger: #b42318;
-  --color-tone-danger-bg: #fef1f0;
+  --color-tone-danger-bg: #fef3f2;
   --color-tone-verified: #146c43;
   --color-tone-verified-bg: #e8f5ee;
 
-  --radius-card: 0.625rem;
-  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  /* Shape and elevation */
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+  --shadow-card: 0 1px 2px 0 rgb(16 42 67 / 0.04), 0 1px 3px 0 rgb(16 42 67 / 0.06);
+  --shadow-raised: 0 4px 6px -1px rgb(16 42 67 / 0.06), 0 10px 24px -6px rgb(16 42 67 / 0.12);
+  --shadow-overlay: 0 24px 48px -12px rgb(16 42 67 / 0.28);
 }
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; font-feature-settings: "cv11", "ss01"; }
+  html { -webkit-text-size-adjust: 100%; font-feature-settings: "cv11", "ss01"; scroll-padding-top: 5rem; }
   body { @apply bg-paper text-ink antialiased; }
   /* Money and counts line up in columns. */
   .tabular-nums, table { font-variant-numeric: tabular-nums; }
-  :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--color-teal); outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 }

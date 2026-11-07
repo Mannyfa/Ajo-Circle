@@ -1,6 +1,6 @@
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, Inbox } from 'lucide-react'
+import { AlertCircle, AlertTriangle, CheckCircle2, Eye, EyeOff, Info, Inbox } from 'lucide-react'
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { ApiError } from '../lib/api'
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
@@ -60,10 +60,24 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
   )
 }
 
-const inputCls = 'block w-full min-h-11 rounded-lg border border-line-strong bg-card px-3 py-2 text-base text-ink shadow-sm placeholder:text-ink-soft/60 transition-colors focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 aria-[invalid=true]:border-tone-danger'
+const inputCls = 'block w-full min-h-11 rounded-lg border border-line-strong bg-card px-3 py-2 text-base text-ink shadow-sm placeholder:text-ink-soft/60 transition-colors focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/15 aria-[invalid=true]:border-tone-danger'
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${inputCls} ${props.className ?? ''}`} />
+}
+
+/** Password field with a show/hide toggle (a real button, so it works by keyboard and touch). */
+export function PasswordInput(props: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>) {
+  const [shown, setShown] = useState(false)
+  return (
+    <div className="relative">
+      <input {...props} type={shown ? 'text' : 'password'} className={`${inputCls} pr-12 ${props.className ?? ''}`} />
+      <button type="button" onClick={() => setShown((v) => !v)} aria-label={shown ? 'Hide password' : 'Show password'} aria-pressed={shown}
+        className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-lg text-ink-soft hover:text-ink">
+        {shown ? <EyeOff aria-hidden className="size-[18px]" /> : <Eye aria-hidden className="size-[18px]" />}
+      </button>
+    </div>
+  )
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
@@ -102,7 +116,7 @@ export function Alert({ tone = 'info', title, children }: { tone?: Tone; title?:
 }
 
 export function SuccessNote({ children }: { children: ReactNode }) {
-  return <p role="status" className="flex items-center gap-1.5 text-sm font-medium text-tone-info"><CheckCircle2 aria-hidden className="size-4" />{children}</p>
+  return <p role="status" className="flex items-center gap-1.5 text-sm font-medium text-teal"><CheckCircle2 aria-hidden className="size-4" />{children}</p>
 }
 
 /** Renders any thrown error as a readable alert, including server field errors. */

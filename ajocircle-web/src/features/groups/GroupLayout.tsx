@@ -18,7 +18,7 @@ export function GroupLayout() {
   const q = useQuery({ queryKey: groupKey(groupId), queryFn: () => api.get<GroupDetail>(`/groups/${groupId}`) })
 
   if (q.isLoading) return <Loading />
-  if (q.error || !q.data) return <><PageHeader title="Group" back={{ to: '/app', label: 'My groups' }} /><ErrorAlert error={q.error} /></>
+  if (q.error || !q.data) return <><PageHeader title="Group" back={{ to: '/app/groups', label: 'My groups' }} /><ErrorAlert error={q.error} /></>
 
   const g = q.data
   const refresh = () => qc.invalidateQueries({ queryKey: ['group', groupId] })
@@ -26,12 +26,12 @@ export function GroupLayout() {
   const base = `/app/groups/${g.id}`
   // Underline tabs: the corporate convention for sections of one record.
   const tab = ({ isActive }: { isActive: boolean }) =>
-    `-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors ${isActive ? 'border-brand text-brand' : 'border-transparent text-ink-soft hover:border-line-strong hover:text-ink'}`
+    `-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors ${isActive ? 'border-teal font-semibold text-ink' : 'border-transparent text-ink-soft hover:border-line-strong hover:text-ink'}`
 
   return (
     <>
       <PageHeader
-        back={{ to: '/app', label: 'My groups' }}
+        back={{ to: '/app/groups', label: 'My groups' }}
         title={g.name}
         subtitle={<span className="flex flex-wrap items-center gap-2"><GroupStatusBadge status={g.status} />
           <span>{isOrganizer ? 'You organize this group' : `Organized by ${g.organizerName}`}</span>
@@ -73,11 +73,11 @@ function Lifecycle({ status }: { status: GroupDetail['status'] }) {
     <ol className="mb-5 flex items-center rounded-[var(--radius-card)] border border-line bg-card px-3 py-3 shadow-[var(--shadow-card)] sm:px-5" aria-label="Group lifecycle">
       {stages.map(([s, label], i) => (
         <li key={s} aria-current={i === idx ? 'step' : undefined} className="flex flex-1 items-center gap-2 last:flex-none">
-          <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${i < idx ? 'bg-brand text-white' : i === idx ? 'bg-brand text-white ring-4 ring-brand/15' : 'bg-paper text-ink-soft ring-1 ring-line-strong'}`}>
+          <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${i < idx ? 'bg-teal text-white' : i === idx ? 'bg-brand text-white ring-4 ring-mint/30' : 'bg-paper text-ink-soft ring-1 ring-line-strong'}`}>
             {i < idx ? <Check aria-hidden className="size-3.5" strokeWidth={3} /> : i + 1}
           </span>
           <span className={`hidden text-xs font-semibold sm:inline ${i === idx ? 'text-ink' : 'text-ink-soft'}`}>{label}</span>
-          {i < stages.length - 1 && <span aria-hidden className={`mx-1 h-px flex-1 ${i < idx ? 'bg-brand' : 'bg-line-strong'}`} />}
+          {i < stages.length - 1 && <span aria-hidden className={`mx-1 h-px flex-1 ${i < idx ? 'bg-teal' : 'bg-line-strong'}`} />}
         </li>
       ))}
       <li className="sr-only">Current stage: {stages[idx]?.[1]}</li>

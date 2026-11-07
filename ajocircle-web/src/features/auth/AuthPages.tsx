@@ -1,23 +1,45 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { CheckCircle2 } from 'lucide-react'
 import { brand } from '../../app/brand'
-import { Alert, Button, Card, ErrorAlert, Field, Loading, TextInput } from '../../components/ui'
+import { usePageMeta } from '../../app/usePageMeta'
+import { Alert, Button, Card, ErrorAlert, Field, Loading, PasswordInput, TextInput } from '../../components/ui'
 import { meKey, useMe } from '../../hooks/useMe'
 import { api, ApiError } from '../../lib/api'
 import type { Me } from '../../types/api'
 
 /** Only allow in-app relative redirects (no open redirect). */
-function safeNext(raw: string | null, fallback = '/app') {
+function safeNext(raw: string | null, fallback = '/app/dashboard') {
   return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : fallback
 }
 
 function AuthShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  usePageMeta(title)
   return (
-    <div className="mx-auto max-w-md px-4 py-8">
-      <h1 className="text-2xl font-semibold">{title}</h1>
-      {subtitle && <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>}
-      <Card className="mt-5">{children}</Card>
+    <div className="grid min-h-[calc(100dvh-4rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      {/* Brand panel — tablet landscape and up only; phones get a single focused column. */}
+      <aside className="relative hidden overflow-hidden bg-brand px-10 py-14 text-white lg:flex lg:flex-col lg:justify-between">
+        <div aria-hidden className="absolute -right-24 -top-24 size-80 rounded-full border-[28px] border-white/5" />
+        <div aria-hidden className="absolute -bottom-32 -left-16 size-96 rounded-full border-[36px] border-mint/10" />
+        <div className="relative max-w-md">
+          <p className="text-xs font-semibold uppercase tracking-wider text-mint">{brand.name}</p>
+          <p className="mt-4 text-3xl font-semibold leading-tight tracking-tight">{brand.tagline}</p>
+          <ul className="mt-8 space-y-3 text-sm text-white/80">
+            {['Every member sees the same rules and dates.', 'Records are permanent; corrections are linked, never overwritten.', 'Tracking only — your money stays with your group.'].map((t) => (
+              <li key={t} className="flex gap-2.5"><CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-mint" />{t}</li>
+            ))}
+          </ul>
+        </div>
+        <p className="relative text-xs text-white/55">{brand.name} does not hold, collect or transfer money.</p>
+      </aside>
+      <div className="flex items-start justify-center bg-paper px-4 py-10 sm:items-center sm:py-14">
+        <div className="w-full max-w-md">
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          {subtitle && <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>}
+          <Card className="mt-6 sm:p-6">{children}</Card>
+        </div>
+      </div>
     </div>
   )
 }
@@ -32,13 +54,13 @@ export function RegisterPage() {
     mutationFn: () => api.post<Me>('/auth/register', form),
     onSuccess: (me) => {
       qc.setQueryData(meKey, me)
-      navigate(`/verify?next=${encodeURIComponent(next)}`)
+      navigate(`/verify-account?next=${encodeURIComponent(next)}`)
     },
   })
   const fe = m.error instanceof ApiError ? m.error.fieldErrors : {}
 
   return (
-    <AuthShell title="Create your account" subtitle={`Free to use while ${brand.name} is in pilot.`}>
+    <AuthShell title="Create your account" subtitle={`Set up and track your ajo groups with ${brand.name}.`}>
       <form className="space-y-4" onSubmit={(e: FormEvent) => { e.preventDefault(); m.mutate() }} noValidate>
         <Field label="Your name" hint="Shown to members of your groups." error={fe.displayName}>
           {(id, d) => <TextInput id={id} aria-describedby={d} autoComplete="name" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} required />}
@@ -47,17 +69,17 @@ export function RegisterPage() {
           {(id, d) => <TextInput id={id} aria-describedby={d} type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />}
         </Field>
         <Field label="Password" hint="At least 10 characters." error={fe.password}>
-          {(id, d) => <TextInput id={id} aria-describedby={d} type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
+          {(id, d) => <PasswordInput id={id} aria-describedby={d} autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
         </Field>
         <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" className="mt-1 size-4 accent-brand" checked={form.acceptTerms} onChange={(e) => setForm({ ...form, acceptTerms: e.target.checked })} />
+          <input type="checkbox" className="mt-1 size-4 accent-teal" checked={form.acceptTerms} onChange={(e) => setForm({ ...form, acceptTerms: e.target.checked })} />
           <span>I accept the <Link to="/terms" className="font-semibold underline">Terms of Service</Link> and <Link to="/privacy" className="font-semibold underline">Privacy Notice</Link>.</span>
         </label>
         {fe.acceptTerms && <p className="text-xs font-medium text-tone-danger">{fe.acceptTerms[0]}</p>}
         {m.error && !(m.error instanceof ApiError && m.error.status === 400) && <ErrorAlert error={m.error} />}
         <Button type="submit" busy={m.isPending} className="w-full">Create account</Button>
       </form>
-      <p className="mt-4 text-center text-sm text-ink-soft">Already have an account? <Link to={`/login?next=${encodeURIComponent(next)}`} className="font-semibold text-ink underline">Sign in</Link></p>
+      <p className="mt-4 text-center text-sm text-ink-soft">Already have an account? <Link to={`/login?next=${encodeURIComponent(next)}`} className="font-semibold text-ink underline">Log in</Link></p>
     </AuthShell>
   )
 }
@@ -73,23 +95,23 @@ export function LoginPage() {
     mutationFn: () => api.post<Me>('/auth/login', form),
     onSuccess: (me) => {
       qc.setQueryData(meKey, me)
-      navigate(me.contactVerified ? next : `/verify?next=${encodeURIComponent(next)}`)
+      navigate(me.contactVerified ? next : `/verify-account?next=${encodeURIComponent(next)}`)
     },
   })
   if (me && !m.isSuccess) return <Navigate to={next} replace />
 
   return (
-    <AuthShell title="Sign in">
+    <AuthShell title="Log in" subtitle="Welcome back. Log in to see your groups.">
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); m.mutate() }}>
         <Field label="Email">
           {(id) => <TextInput id={id} type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />}
         </Field>
         <Field label="Password">
-          {(id) => <TextInput id={id} type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
+          {(id) => <PasswordInput id={id} autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
         </Field>
         <p className="-mt-2 text-right text-sm"><Link to="/forgot-password" className="font-semibold text-ink-soft underline hover:text-ink">Forgot your password?</Link></p>
         <ErrorAlert error={m.error} />
-        <Button type="submit" busy={m.isPending} className="w-full">Sign in</Button>
+        <Button type="submit" busy={m.isPending} className="w-full">Log in</Button>
       </form>
       <p className="mt-4 text-center text-sm text-ink-soft">New here? <Link to={`/register?next=${encodeURIComponent(next)}`} className="font-semibold text-ink underline">Create an account</Link></p>
     </AuthShell>
@@ -110,7 +132,7 @@ export function VerifyPage() {
   const resend = useMutation({ mutationFn: () => api.post('/auth/resend-verification') })
 
   if (isLoading) return <Loading />
-  if (!me) return <Navigate to={`/login?next=${encodeURIComponent('/verify')}`} replace />
+  if (!me) return <Navigate to={`/login?next=${encodeURIComponent('/verify-account')}`} replace />
   if (me.contactVerified && !verify.isSuccess) return <Navigate to={next} replace />
 
   return (
@@ -192,15 +214,15 @@ export function ResetPasswordPage() {
       {m.isSuccess ? (
         <div className="space-y-3">
           <Alert tone="info" title="Password changed">You can now sign in with your new password.</Alert>
-          <Link to="/login" className="inline-block font-semibold underline">Sign in</Link>
+          <Link to="/login" className="inline-block font-semibold underline">Log in</Link>
         </div>
       ) : (
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (!mismatch) m.mutate() }} noValidate>
           <Field label="New password" hint="At least 10 characters." error={fe.password}>
-            {(id, d) => <TextInput id={id} aria-describedby={d} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />}
+            {(id, d) => <PasswordInput id={id} aria-describedby={d} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />}
           </Field>
           <Field label="Repeat new password" error={mismatch ? ['The passwords don’t match.'] : undefined}>
-            {(id, d) => <TextInput id={id} aria-describedby={d} type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />}
+            {(id, d) => <PasswordInput id={id} aria-describedby={d} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />}
           </Field>
           {m.error && !(m.error instanceof ApiError && m.error.status === 400) && (
             <>

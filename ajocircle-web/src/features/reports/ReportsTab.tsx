@@ -45,7 +45,7 @@ export function GroupReportsTab() {
           <Figure label="Open disputes" value={String(s.openDisputes)} tone={s.openDisputes > 0 ? 'danger' : undefined} />
         </dl>
         {s.scheduledToDate.amountMinor > 0 && <div className="mt-4 h-2 rounded-full bg-paper" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Recorded against due to date">
-          <div className="h-2 rounded-full bg-brand" style={{ width: `${pct}%` }} />
+          <div className="h-2 rounded-full bg-teal" style={{ width: `${pct}%` }} />
         </div>}
       </Card>
 
@@ -57,7 +57,7 @@ export function GroupReportsTab() {
             return (
               <li key={k} className="flex flex-col rounded-[var(--radius-card)] border border-line bg-card p-4 shadow-[var(--shadow-card)]">
                 <div className="flex gap-3">
-                  <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand"><c.icon className="size-5" /></span>
+                  <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg bg-teal-soft text-teal"><c.icon className="size-5" /></span>
                   <div className="min-w-0">
                     <h3 className="font-semibold">{c.title}</h3>
                     <p className="mt-0.5 text-sm text-ink-soft">{c.text}</p>

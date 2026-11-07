@@ -115,12 +115,12 @@ function SubmitStep({ current }: { current: IdentityLevel }) {
           <legend className="mb-2 text-sm font-semibold">What do you want to do?</legend>
           {current === 'None' && (
             <label className={`flex cursor-pointer gap-3 rounded-lg p-3 ${level === 'Member' ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
-              <input type="radio" name="level" checked={level === 'Member'} onChange={() => setLevel('Member')} className="mt-1 accent-brand" />
+              <input type="radio" name="level" checked={level === 'Member'} onChange={() => setLevel('Member')} className="mt-1 accent-teal" />
               <span><span className="block font-semibold">Join groups</span><span className="text-sm text-ink-soft">Phone and one ID document.</span></span>
             </label>
           )}
           <label className={`flex cursor-pointer gap-3 rounded-lg p-3 ${level === 'Organizer' ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
-            <input type="radio" name="level" checked={level === 'Organizer'} onChange={() => setLevel('Organizer')} className="mt-1 accent-brand" />
+            <input type="radio" name="level" checked={level === 'Organizer'} onChange={() => setLevel('Organizer')} className="mt-1 accent-teal" />
             <span><span className="block font-semibold">Run groups too</span><span className="text-sm text-ink-soft">Also your BVN and a passport photograph.</span></span>
           </label>
         </fieldset>
@@ -155,7 +155,7 @@ function SubmitStep({ current }: { current: IdentityLevel }) {
           )}
         </div>
         <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" className="mt-1 size-4 accent-brand" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+          <input type="checkbox" className="mt-1 size-4 accent-teal" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
           <span>I agree that the operations team may check these details to verify my identity, as described in the <Link to="/privacy" className="font-semibold underline">Privacy Notice</Link>.</span>
         </label>
         {submit.error && !(submit.error instanceof ApiError && submit.error.status === 400) && <ErrorAlert error={submit.error} />}

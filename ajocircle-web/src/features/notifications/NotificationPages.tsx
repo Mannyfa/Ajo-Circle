@@ -98,7 +98,7 @@ export function SettingsPage() {
         <Card className="space-y-3">
           <h2 className="font-bold">Email notifications</h2>
           <label className="flex min-h-11 cursor-pointer items-start gap-3">
-            <input type="checkbox" className="mt-1 size-5 accent-brand" checked={q.data.emailNotifications} disabled={save.isPending}
+            <input type="checkbox" className="mt-1 size-5 accent-teal" checked={q.data.emailNotifications} disabled={save.isPending}
               onChange={(e) => save.mutate({ emailNotifications: e.target.checked })} />
             <span>
               <span className="block font-semibold">Email me about my groups</span>
@@ -106,7 +106,7 @@ export function SettingsPage() {
             </span>
           </label>
           <p className="text-xs text-ink-soft">Security emails — verification codes and password resets — are always sent. You’ll still see every notification in the app.</p>
-          {save.isSuccess && <p role="status" className="text-sm font-semibold text-tone-info">Saved.</p>}
+          {save.isSuccess && <p role="status" className="text-sm font-semibold text-teal">Saved.</p>}
         </Card>
       )}
     </>

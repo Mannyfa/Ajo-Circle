@@ -302,7 +302,7 @@ function RoundTotals({ rounds }: { rounds: Round[] }) {
                 <span className="tabular-nums">{formatMoney(r.progress.recordedTotal)} <span className="text-ink-soft">of {formatMoney(r.progress.expectedTotal)}</span></span>
               </div>
               <div className="mt-1 h-2 rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={`Round ${r.roundNumber} recorded`}>
-                <div className="h-2 rounded-full bg-tone-info" style={{ width: `${pct}%` }} />
+                <div className="h-2 rounded-full bg-teal" style={{ width: `${pct}%` }} />
               </div>
               <p className="mt-1 text-xs text-ink-soft">{r.progress.recorded} of {r.progress.expected} recorded · {r.progress.confirmed} confirmed by members{r.progress.disputed > 0 && <> · <strong className="text-tone-danger">{r.progress.disputed} disputed</strong></>}</p>
             </li>

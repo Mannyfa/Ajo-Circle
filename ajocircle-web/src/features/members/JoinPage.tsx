@@ -58,7 +58,7 @@ export function JoinPage() {
           )}
           {me && !me.contactVerified && (
             <Alert tone="warn" title="Verify your email to join">
-              <Link to={`/verify?next=${encodeURIComponent(here)}`} className="font-semibold underline">Enter your code</Link>
+              <Link to={`/verify-account?next=${encodeURIComponent(here)}`} className="font-semibold underline">Enter your code</Link>
             </Alert>
           )}
           {me?.contactVerified && me.identityLevel === 'None' && (
@@ -70,7 +70,7 @@ export function JoinPage() {
           {me?.contactVerified && me.identityLevel !== 'None' && (
             <>
               <label className="flex items-start gap-3 text-sm">
-                <input type="checkbox" className="mt-1 size-4 accent-brand" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
+                <input type="checkbox" className="mt-1 size-4 accent-teal" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
                 <span>
                   I have read and accept terms version {inv.schemeVersion}. I understand that
                   payments happen outside this app, that scheduled payouts are not guaranteed, and that the organizer records payments.
