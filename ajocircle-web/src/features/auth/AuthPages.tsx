@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { brand } from '../../app/brand'
 import { Alert, Button, Card, ErrorAlert, Field, Loading, TextInput } from '../../components/ui'
@@ -87,6 +87,7 @@ export function LoginPage() {
         <Field label="Password">
           {(id) => <TextInput id={id} type="password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
         </Field>
+        <p className="-mt-2 text-right text-sm"><Link to="/forgot-password" className="font-semibold text-ink-soft underline hover:text-ink">Forgot your password?</Link></p>
         <ErrorAlert error={m.error} />
         <Button type="submit" busy={m.isPending} className="w-full">Sign in</Button>
       </form>
@@ -127,6 +128,89 @@ export function VerifyPage() {
         <Button type="submit" busy={verify.isPending} disabled={code.length !== 6} className="w-full">Verify</Button>
         <Button type="button" variant="ghost" busy={resend.isPending} onClick={() => resend.mutate()} className="w-full">Send a new code</Button>
       </form>
+      <DevInboxHint />
+    </AuthShell>
+  )
+}
+
+/** Local development only: emails land in the Mailpit test inbox instead of real mailboxes. */
+export function DevInboxHint() {
+  if (!import.meta.env.DEV) return null
+  return <p className="mt-3 text-center text-xs text-ink-soft">Developer: emails go to the local test inbox at <a className="underline" href="http://localhost:8025" target="_blank" rel="noreferrer">localhost:8025</a>.</p>
+}
+
+export function ForgotPasswordPage() {
+  const [email, setEmail] = useState('')
+  const m = useMutation({ mutationFn: () => api.post('/auth/forgot-password', { email }) })
+  return (
+    <AuthShell title="Reset your password" subtitle="We’ll email you a link to choose a new one.">
+      {m.isSuccess ? (
+        <div className="space-y-3">
+          <Alert tone="info" title="Check your email">If an account uses {email}, a reset link is on its way. It works once and expires in 30 minutes.</Alert>
+          <p className="text-sm text-ink-soft">No email after a few minutes? Check spam, or try again later.</p>
+          <Link to="/login" className="inline-block text-sm font-semibold underline">Back to sign in</Link>
+        </div>
+      ) : (
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); m.mutate() }}>
+          <Field label="Email">
+            {(id) => <TextInput id={id} type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} required />}
+          </Field>
+          <ErrorAlert error={m.error} />
+          <Button type="submit" busy={m.isPending} disabled={!email.includes('@')} className="w-full">Send reset link</Button>
+          <p className="text-center text-sm text-ink-soft"><Link to="/login" className="font-semibold text-ink underline">Back to sign in</Link></p>
+        </form>
+      )}
+      <DevInboxHint />
+    </AuthShell>
+  )
+}
+
+export function ResetPasswordPage() {
+  const [params] = useSearchParams()
+  const qc = useQueryClient()
+  // Read the token once, then drop it from the address bar so it isn't left in history or shown on screen.
+  const [token] = useState(() => params.get('token') ?? '')
+  useEffect(() => { if (window.location.search) window.history.replaceState(null, '', '/reset-password') }, [])
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const m = useMutation({
+    mutationFn: () => api.post('/auth/reset-password', { token, newPassword: password }),
+    onSuccess: () => qc.setQueryData(meKey, null), // the server signed out every session, including this one
+  })
+  const fe = m.error instanceof ApiError ? m.error.fieldErrors : {}
+  const mismatch = confirm.length > 0 && confirm !== password
+
+  if (!token) return (
+    <AuthShell title="Reset link missing">
+      <Alert tone="warn" title="Open the link from your email">This page needs the full link from the reset email. You can request a new one.</Alert>
+      <Link to="/forgot-password" className="mt-3 inline-block text-sm font-semibold underline">Request a new link</Link>
+    </AuthShell>
+  )
+
+  return (
+    <AuthShell title="Choose a new password" subtitle="This signs you out on every device.">
+      {m.isSuccess ? (
+        <div className="space-y-3">
+          <Alert tone="info" title="Password changed">You can now sign in with your new password.</Alert>
+          <Link to="/login" className="inline-block font-semibold underline">Sign in</Link>
+        </div>
+      ) : (
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); if (!mismatch) m.mutate() }} noValidate>
+          <Field label="New password" hint="At least 10 characters." error={fe.password}>
+            {(id, d) => <TextInput id={id} aria-describedby={d} type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />}
+          </Field>
+          <Field label="Repeat new password" error={mismatch ? ['The passwords don’t match.'] : undefined}>
+            {(id, d) => <TextInput id={id} aria-describedby={d} type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />}
+          </Field>
+          {m.error && !(m.error instanceof ApiError && m.error.status === 400) && (
+            <>
+              <ErrorAlert error={m.error} />
+              <Link to="/forgot-password" className="inline-block text-sm font-semibold underline">Request a new link</Link>
+            </>
+          )}
+          <Button type="submit" busy={m.isPending} disabled={!password || mismatch} className="w-full">Save new password</Button>
+        </form>
+      )}
     </AuthShell>
   )
 }

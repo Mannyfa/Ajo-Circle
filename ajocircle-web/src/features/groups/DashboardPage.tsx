@@ -6,6 +6,7 @@ import { GroupStatusBadge } from '../../components/StatusBadge'
 import { EmptyState, ErrorAlert, Loading, Select, TextInput } from '../../components/ui'
 import { api } from '../../lib/api'
 import { formatDate, formatMoney, frequencyNoun } from '../../lib/format'
+import { schemeLabel } from '../schemes/labels'
 import type { GroupListItem, GroupStatus } from '../../types/api'
 
 export function DashboardPage() {
@@ -64,7 +65,7 @@ function GroupSection({ title, groups }: { title: string; groups: GroupListItem[
                 <GroupStatusBadge status={g.status} />
               </div>
               <p className="mt-2 text-sm text-ink-soft">
-                <span className="font-semibold text-ink tabular-nums">{formatMoney(g.contribution)}</span> per {frequencyNoun[g.frequency]} · {g.memberCount}/{g.capacity} members
+                <span className="font-semibold text-ink tabular-nums">{formatMoney(g.contribution)}</span> per {frequencyNoun[g.frequency]} · {g.memberCount}/{g.capacity} members · {schemeLabel[g.schemeType]}
               </p>
               <p className="mt-1 text-xs text-ink-soft">Starts {formatDate(g.startDate)}</p>
             </Link>

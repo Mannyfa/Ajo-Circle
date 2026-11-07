@@ -1,4 +1,4 @@
-import type { GroupStatus, ObligationStatus, PayoutStatus } from '../types/api'
+import type { DisputeStatus, GroupStatus, ObligationStatus, PayoutStatus, RecordStatus } from '../types/api'
 
 type Tone = 'neutral' | 'info' | 'warn' | 'danger' | 'verified'
 const toneCls: Record<Tone, string> = {
@@ -47,6 +47,7 @@ const obligationMap: Record<ObligationStatus, [Tone, string, string, string]> = 
   VerifiedByProvider: ['verified', '✔✔', 'Verified by provider', 'Verified by an approved payment provider.'],
   Disputed: ['danger', '!', 'Disputed', 'Someone has raised an unresolved issue.'],
   Reversed: ['danger', '↺', 'Reversed', 'A previous record was reversed through a traceable correction.'],
+  Cancelled: ['neutral', '–', 'No longer owed', 'Not owed: the member left early or the group was cancelled before it was due.'],
 }
 
 export function ObligationStatusBadge({ status }: { status: ObligationStatus }) {
@@ -54,8 +55,26 @@ export function ObligationStatusBadge({ status }: { status: ObligationStatus }) 
   return <Badge tone={tone} glyph={glyph} label={label} title={title} />
 }
 
+const payoutMap: Record<PayoutStatus, [Tone, string, string, string]> = {
+  Scheduled: ['neutral', '◷', 'Scheduled', 'A scheduled payout is not funded, executed or guaranteed.'],
+  RecordedByOrganizer: ['info', '✎', 'Recorded by organizer', 'The organizer reports this payout was made outside the app. Not independently verified.'],
+  ConfirmedByRecipient: ['info', '✔', 'Confirmed by recipient', 'The recipient confirmed receiving it. Not proof of bank settlement.'],
+  Disputed: ['danger', '!', 'Disputed', 'The recipient has raised an unresolved issue.'],
+}
+
 export function PayoutStatusBadge({ status }: { status: PayoutStatus }) {
-  return status === 'Scheduled'
-    ? <Badge tone="neutral" glyph="◷" label="Scheduled" title="A scheduled payout is not funded, executed or guaranteed." />
-    : null
+  const [tone, glyph, label, title] = payoutMap[status]
+  return <Badge tone={tone} glyph={glyph} label={label} title={title} />
+}
+
+/** For a record on a payout, "confirmed by member" means the recipient confirmed. */
+export function RecordStatusBadge({ status, payout }: { status: RecordStatus; payout?: boolean }) {
+  if (status === 'ConfirmedByMember' && payout) return <PayoutStatusBadge status="ConfirmedByRecipient" />
+  return <ObligationStatusBadge status={status} />
+}
+
+export function DisputeStatusBadge({ status }: { status: DisputeStatus }) {
+  return status === 'Open'
+    ? <Badge tone="warn" glyph="!" label="Open" title="Waiting for the organizer to correct the record or the member to withdraw." />
+    : <Badge tone="neutral" glyph="■" label="Resolved" />
 }

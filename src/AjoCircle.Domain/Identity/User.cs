@@ -20,6 +20,10 @@ public sealed class User
     /// <summary>Changing this invalidates existing sessions.</summary>
     public string SecurityStamp { get; private set; } = "";
     public DateTimeOffset CreatedAt { get; private set; }
+    /// <summary>Email copies of notifications. Security emails (verification, password reset) are always sent.</summary>
+    public bool EmailNotificationsEnabled { get; private set; } = true;
+
+    public void SetEmailNotifications(bool enabled) => EmailNotificationsEnabled = enabled;
 
     public bool IsContactVerified => ContactVerifiedAt is not null;
 
@@ -41,7 +45,7 @@ public sealed class User
         return new User
         {
             Id = Guid.CreateVersion7(now), Email = email, DisplayName = displayName, Status = UserStatus.Active,
-            TermsAcceptedAt = now, SecurityStamp = NewStamp(), CreatedAt = now,
+            TermsAcceptedAt = now, SecurityStamp = NewStamp(), CreatedAt = now, EmailNotificationsEnabled = true,
         };
     }
 

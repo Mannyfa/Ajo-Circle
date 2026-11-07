@@ -76,6 +76,52 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                     b.ToTable("audit_logs", (string)null);
                 });
 
+            modelBuilder.Entity("AjoCircle.Domain.Groups.AllocationShare", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AssignedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("assigned_at");
+
+                    b.Property<Guid>("AssignedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assigned_by");
+
+                    b.Property<int>("BasisPoints")
+                        .HasColumnType("integer")
+                        .HasColumnName("basis_points");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<Guid>("MembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("membership_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_allocation_shares");
+
+                    b.HasIndex("AssignedBy")
+                        .HasDatabaseName("ix_allocation_shares_assigned_by");
+
+                    b.HasIndex("GroupId")
+                        .HasDatabaseName("ix_allocation_shares_group_id");
+
+                    b.HasIndex("MembershipId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_allocation_shares_membership_id");
+
+                    b.ToTable("allocation_shares", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_allocation_shares_bp", "basis_points BETWEEN 0 AND 10000");
+                        });
+                });
+
             modelBuilder.Entity("AjoCircle.Domain.Groups.ContributionObligation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -138,7 +184,7 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_contribution_obligations_currency", "currency = 'NGN'");
 
-                            t.HasCheckConstraint("ck_contribution_obligations_status", "status IN ('Due', 'SubmittedForReview', 'RecordedByOrganizer', 'ConfirmedByMember', 'VerifiedByProvider', 'Disputed', 'Reversed')");
+                            t.HasCheckConstraint("ck_contribution_obligations_status", "status IN ('Due', 'SubmittedForReview', 'RecordedByOrganizer', 'ConfirmedByMember', 'VerifiedByProvider', 'Disputed', 'Reversed', 'Cancelled')");
                         });
                 });
 
@@ -157,6 +203,10 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("CancelledAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("cancelled_at");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -310,6 +360,19 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("accepted_scheme_version_id");
 
+                    b.Property<string>("ExitReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("exit_reason");
+
+                    b.Property<DateTimeOffset?>("ExitedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("exited_at");
+
+                    b.Property<Guid?>("ExitedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exited_by");
+
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
@@ -346,6 +409,9 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                     b.HasIndex("AcceptedSchemeVersionId")
                         .HasDatabaseName("ix_group_memberships_accepted_scheme_version_id");
 
+                    b.HasIndex("ExitedBy")
+                        .HasDatabaseName("ix_group_memberships_exited_by");
+
                     b.HasIndex("JoinedViaInvitationId")
                         .HasDatabaseName("ix_group_memberships_joined_via_invitation_id");
 
@@ -364,7 +430,7 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_group_memberships_join_sequence", "join_sequence >= 1");
 
-                            t.HasCheckConstraint("ck_group_memberships_status", "status IN ('Active', 'Removed')");
+                            t.HasCheckConstraint("ck_group_memberships_status", "status IN ('Active', 'Removed', 'Exited')");
                         });
                 });
 
@@ -390,11 +456,19 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("group_id");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("RotatingPayout")
+                        .HasColumnName("kind");
+
                     b.Property<Guid>("RecipientMembershipId")
                         .HasColumnType("uuid")
                         .HasColumnName("recipient_membership_id");
 
-                    b.Property<Guid>("RoundId")
+                    b.Property<Guid?>("RoundId")
                         .HasColumnType("uuid")
                         .HasColumnName("round_id");
 
@@ -421,13 +495,22 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                     b.HasIndex("GroupId", "ScheduledDate")
                         .HasDatabaseName("ix_payouts_group_id_scheduled_date");
 
+                    b.HasIndex("RecipientMembershipId", "Kind")
+                        .IsUnique()
+                        .HasDatabaseName("ux_payouts_one_owed_back_per_kind")
+                        .HasFilter("kind <> 'RotatingPayout'");
+
                     b.ToTable("payouts", null, t =>
                         {
                             t.HasCheckConstraint("ck_payouts_amount", "amount_minor >= 0");
 
                             t.HasCheckConstraint("ck_payouts_currency", "currency = 'NGN'");
 
-                            t.HasCheckConstraint("ck_payouts_status", "status IN ('Scheduled')");
+                            t.HasCheckConstraint("ck_payouts_kind", "kind IN ('RotatingPayout', 'Release', 'ExitRefund', 'CancellationRefund')");
+
+                            t.HasCheckConstraint("ck_payouts_round", "(kind = 'RotatingPayout') = (round_id IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_payouts_status", "status IN ('Scheduled', 'RecordedByOrganizer', 'ConfirmedByRecipient', 'Disputed')");
                         });
                 });
 
@@ -607,6 +690,48 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                     b.ToTable("contact_verifications", (string)null);
                 });
 
+            modelBuilder.Entity("AjoCircle.Domain.Identity.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_reset_tokens");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_password_reset_tokens_token_hash");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_password_reset_tokens_user_id_created_at");
+
+                    b.ToTable("password_reset_tokens", (string)null);
+                });
+
             modelBuilder.Entity("AjoCircle.Domain.Identity.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -633,6 +758,10 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)")
                         .HasColumnName("email");
+
+                    b.Property<bool>("EmailNotificationsEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("email_notifications_enabled");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -664,6 +793,610 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_users_email");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DedupeKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("dedupe_key");
+
+                    b.Property<int>("EmailAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("email_attempts");
+
+                    b.Property<string>("EmailLastError")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("email_last_error");
+
+                    b.Property<DateTimeOffset?>("EmailSentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("email_sent_at");
+
+                    b.Property<string>("EmailStatus")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("email_status");
+
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("LinkPath")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("link_path");
+
+                    b.Property<DateTimeOffset?>("NextEmailAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_email_attempt_at");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("type");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notifications");
+
+                    b.HasIndex("GroupId")
+                        .HasDatabaseName("ix_notifications_group_id");
+
+                    b.HasIndex("NextEmailAttemptAt")
+                        .HasDatabaseName("ix_notifications_next_email_attempt_at")
+                        .HasFilter("email_status = 'Pending'");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_notifications_user_id_created_at");
+
+                    b.HasIndex("UserId", "DedupeKey")
+                        .IsUnique()
+                        .HasDatabaseName("ix_notifications_user_id_dedupe_key")
+                        .HasFilter("dedupe_key IS NOT NULL");
+
+                    b.ToTable("notifications", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_notifications_attempts", "email_attempts >= 0");
+
+                            t.HasCheckConstraint("ck_notifications_email_status", "email_status IN ('Pending', 'Sent', 'Failed', 'Skipped')");
+
+                            t.HasCheckConstraint("ck_notifications_type", "type IN ('MemberJoined', 'GroupReadyToStart', 'GroupStarted', 'GroupCancelled', 'ContributionRecorded', 'ContributionCorrected', 'PayoutRecorded', 'PayoutCorrected', 'DisputeRaised', 'DisputeReply', 'DisputeResolved', 'ContributionDueSoon', 'ContributionOverdue', 'PayoutApproaching', 'MemberExited', 'SavingsCompleted')");
+                        });
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.ContributionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_minor");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<Guid?>("ConfirmedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("confirmed_by");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character(3)")
+                        .HasColumnName("currency")
+                        .IsFixedLength();
+
+                    b.Property<string>("EvidenceReference")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("evidence_reference");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("method");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("ObligationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("obligation_id");
+
+                    b.Property<DateOnly>("PaidOn")
+                        .HasColumnType("date")
+                        .HasColumnName("paid_on");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recorded_by");
+
+                    b.Property<Guid?>("ReplacesRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replaces_record_id");
+
+                    b.Property<string>("ReversalReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reversal_reason");
+
+                    b.Property<DateTimeOffset?>("ReversedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reversed_at");
+
+                    b.Property<Guid?>("ReversedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reversed_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubjectMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_membership_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_contribution_records");
+
+                    b.HasIndex("ConfirmedBy")
+                        .HasDatabaseName("ix_contribution_records_confirmed_by");
+
+                    b.HasIndex("ObligationId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_contribution_records_one_active")
+                        .HasFilter("status <> 'Reversed'");
+
+                    b.HasIndex("RecordedBy")
+                        .HasDatabaseName("ix_contribution_records_recorded_by");
+
+                    b.HasIndex("ReplacesRecordId")
+                        .HasDatabaseName("ix_contribution_records_replaces_record_id");
+
+                    b.HasIndex("ReversedBy")
+                        .HasDatabaseName("ix_contribution_records_reversed_by");
+
+                    b.HasIndex("SubjectMembershipId")
+                        .HasDatabaseName("ix_contribution_records_subject_membership_id");
+
+                    b.HasIndex("GroupId", "Status")
+                        .HasDatabaseName("ix_contribution_records_group_id_status");
+
+                    b.HasIndex("ObligationId", "RecordedAt")
+                        .HasDatabaseName("ix_contribution_records_obligation_id_recorded_at");
+
+                    b.ToTable("contribution_records", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_contribution_records_amount", "amount_minor > 0");
+
+                            t.HasCheckConstraint("ck_contribution_records_currency", "currency = 'NGN'");
+
+                            t.HasCheckConstraint("ck_contribution_records_method", "method IN ('Cash', 'BankTransfer', 'PosOrMobileMoney', 'Other')");
+
+                            t.HasCheckConstraint("ck_contribution_records_reversal", "(status = 'Reversed') = (reversed_at IS NOT NULL AND reversed_by IS NOT NULL AND reversal_reason IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_contribution_records_status", "status IN ('RecordedByOrganizer', 'ConfirmedByMember', 'Disputed', 'Reversed')");
+                        });
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.Dispute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("category");
+
+                    b.Property<Guid?>("CorrectiveRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("corrective_record_id");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<DateTimeOffset>("RaisedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("raised_at");
+
+                    b.Property<Guid>("RaisedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("raised_by");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<string>("RecordType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("record_type");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("reference");
+
+                    b.Property<string>("Resolution")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("resolution");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("resolution_note");
+
+                    b.Property<DateTimeOffset?>("ResolvedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<Guid?>("ResolvedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_disputes");
+
+                    b.HasIndex("RaisedBy")
+                        .HasDatabaseName("ix_disputes_raised_by");
+
+                    b.HasIndex("RecordId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_disputes_one_open_per_record")
+                        .HasFilter("status = 'Open'");
+
+                    b.HasIndex("Reference")
+                        .IsUnique()
+                        .HasDatabaseName("ix_disputes_reference");
+
+                    b.HasIndex("ResolvedBy")
+                        .HasDatabaseName("ix_disputes_resolved_by");
+
+                    b.HasIndex("GroupId", "Status")
+                        .HasDatabaseName("ix_disputes_group_id_status");
+
+                    b.ToTable("disputes", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_disputes_category", "category IN ('DidNotHappen', 'WrongAmount', 'WrongDate', 'Other')");
+
+                            t.HasCheckConstraint("ck_disputes_record_type", "record_type IN ('ContributionRecord', 'PayoutRecord')");
+
+                            t.HasCheckConstraint("ck_disputes_resolution", "resolution IS NULL OR resolution IN ('WithdrawnByMember', 'RecordCorrected', 'RecordReversed')");
+
+                            t.HasCheckConstraint("ck_disputes_resolved_fields", "(status = 'Open' AND resolved_at IS NULL AND resolution IS NULL) OR (status = 'Resolved' AND resolved_at IS NOT NULL AND resolution IS NOT NULL AND resolved_by IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_disputes_status", "status IN ('Open', 'Resolved')");
+                        });
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.DisputeMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("DisputeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("dispute_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_dispute_messages");
+
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("ix_dispute_messages_author_id");
+
+                    b.HasIndex("DisputeId", "CreatedAt")
+                        .HasDatabaseName("ix_dispute_messages_dispute_id_created_at");
+
+                    b.ToTable("dispute_messages", (string)null);
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.PayoutRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AmountMinor")
+                        .HasColumnType("bigint")
+                        .HasColumnName("amount_minor");
+
+                    b.Property<DateTimeOffset?>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_at");
+
+                    b.Property<Guid?>("ConfirmedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("confirmed_by");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character(3)")
+                        .HasColumnName("currency")
+                        .IsFixedLength();
+
+                    b.Property<string>("EvidenceReference")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("evidence_reference");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("method");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<DateOnly>("PaidOn")
+                        .HasColumnType("date")
+                        .HasColumnName("paid_on");
+
+                    b.Property<Guid>("PayoutId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payout_id");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<Guid>("RecordedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("recorded_by");
+
+                    b.Property<Guid?>("ReplacesRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replaces_record_id");
+
+                    b.Property<string>("ReversalReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reversal_reason");
+
+                    b.Property<DateTimeOffset?>("ReversedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reversed_at");
+
+                    b.Property<Guid?>("ReversedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reversed_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubjectMembershipId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_membership_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_payout_records");
+
+                    b.HasIndex("ConfirmedBy")
+                        .HasDatabaseName("ix_payout_records_confirmed_by");
+
+                    b.HasIndex("PayoutId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_payout_records_one_active")
+                        .HasFilter("status <> 'Reversed'");
+
+                    b.HasIndex("RecordedBy")
+                        .HasDatabaseName("ix_payout_records_recorded_by");
+
+                    b.HasIndex("ReplacesRecordId")
+                        .HasDatabaseName("ix_payout_records_replaces_record_id");
+
+                    b.HasIndex("ReversedBy")
+                        .HasDatabaseName("ix_payout_records_reversed_by");
+
+                    b.HasIndex("SubjectMembershipId")
+                        .HasDatabaseName("ix_payout_records_subject_membership_id");
+
+                    b.HasIndex("GroupId", "Status")
+                        .HasDatabaseName("ix_payout_records_group_id_status");
+
+                    b.HasIndex("PayoutId", "RecordedAt")
+                        .HasDatabaseName("ix_payout_records_payout_id_recorded_at");
+
+                    b.ToTable("payout_records", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_payout_records_amount", "amount_minor > 0");
+
+                            t.HasCheckConstraint("ck_payout_records_currency", "currency = 'NGN'");
+
+                            t.HasCheckConstraint("ck_payout_records_method", "method IN ('Cash', 'BankTransfer', 'PosOrMobileMoney', 'Other')");
+
+                            t.HasCheckConstraint("ck_payout_records_reversal", "(status = 'Reversed') = (reversed_at IS NOT NULL AND reversed_by IS NOT NULL AND reversal_reason IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_payout_records_status", "status IN ('RecordedByOrganizer', 'ConfirmedByMember', 'Disputed', 'Reversed')");
+                        });
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.RecordAmendment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<string>("NewValues")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("new_values");
+
+                    b.Property<string>("OldValues")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("old_values");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<string>("RecordType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("record_type");
+
+                    b.Property<Guid?>("ReplacementRecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("replacement_record_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_record_amendments");
+
+                    b.HasIndex("CreatedBy")
+                        .HasDatabaseName("ix_record_amendments_created_by");
+
+                    b.HasIndex("GroupId")
+                        .HasDatabaseName("ix_record_amendments_group_id");
+
+                    b.HasIndex("RecordType", "RecordId")
+                        .HasDatabaseName("ix_record_amendments_record_type_record_id");
+
+                    b.ToTable("record_amendments", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_record_amendments_record_type", "record_type IN ('ContributionRecord', 'PayoutRecord')");
+                        });
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Groups.AllocationShare", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("AssignedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_allocation_shares_users_assigned_by");
+
+                    b.HasOne("AjoCircle.Domain.Groups.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_allocation_shares_groups_group_id");
+
+                    b.HasOne("AjoCircle.Domain.Groups.GroupMembership", null)
+                        .WithMany()
+                        .HasForeignKey("MembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_allocation_shares_group_memberships_membership_id");
                 });
 
             modelBuilder.Entity("AjoCircle.Domain.Groups.ContributionObligation", b =>
@@ -725,6 +1458,12 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_group_memberships_scheme_versions_accepted_scheme_version_id");
 
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ExitedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_group_memberships_users_exited_by");
+
                     b.HasOne("AjoCircle.Domain.Groups.Group", null)
                         .WithMany()
                         .HasForeignKey("GroupId")
@@ -766,7 +1505,6 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("RoundId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
                         .HasConstraintName("fk_payouts_scheme_rounds_round_id");
                 });
 
@@ -822,6 +1560,187 @@ namespace AjoCircle.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_contact_verifications_users_user_id");
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Identity.PasswordResetToken", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_password_reset_tokens_users_user_id");
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Notifications.Notification", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Groups.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_notifications_groups_group_id");
+
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_users_user_id");
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.ContributionRecord", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ConfirmedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_contribution_records_users_confirmed_by");
+
+                    b.HasOne("AjoCircle.Domain.Groups.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_contribution_records_groups_group_id");
+
+                    b.HasOne("AjoCircle.Domain.Groups.ContributionObligation", null)
+                        .WithMany()
+                        .HasForeignKey("ObligationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_contribution_records_contribution_obligations_obligation_id");
+
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecordedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_contribution_records_users_recorded_by");
+
+                    b.HasOne("AjoCircle.Domain.Records.ContributionRecord", null)
+                        .WithMany()
+                        .HasForeignKey("ReplacesRecordId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_contribution_records_contribution_records_replaces_record_id");
+
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReversedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_contribution_records_users_reversed_by");
+
+                    b.HasOne("AjoCircle.Domain.Groups.GroupMembership", null)
+                        .WithMany()
+                        .HasForeignKey("SubjectMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_contribution_records_group_memberships_subject_membership_id");
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.Dispute", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Groups.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_disputes_groups_group_id");
+
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("RaisedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_disputes_users_raised_by");
+
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ResolvedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_disputes_users_resolved_by");
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.DisputeMessage", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_dispute_messages_users_author_id");
+
+                    b.HasOne("AjoCircle.Domain.Records.Dispute", null)
+                        .WithMany()
+                        .HasForeignKey("DisputeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_dispute_messages_disputes_dispute_id");
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.PayoutRecord", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ConfirmedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payout_records_users_confirmed_by");
+
+                    b.HasOne("AjoCircle.Domain.Groups.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payout_records_groups_group_id");
+
+                    b.HasOne("AjoCircle.Domain.Groups.Payout", null)
+                        .WithMany()
+                        .HasForeignKey("PayoutId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payout_records_payouts_payout_id");
+
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("RecordedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payout_records_users_recorded_by");
+
+                    b.HasOne("AjoCircle.Domain.Records.PayoutRecord", null)
+                        .WithMany()
+                        .HasForeignKey("ReplacesRecordId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payout_records_payout_records_replaces_record_id");
+
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("ReversedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_payout_records_users_reversed_by");
+
+                    b.HasOne("AjoCircle.Domain.Groups.GroupMembership", null)
+                        .WithMany()
+                        .HasForeignKey("SubjectMembershipId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payout_records_group_memberships_subject_membership_id");
+                });
+
+            modelBuilder.Entity("AjoCircle.Domain.Records.RecordAmendment", b =>
+                {
+                    b.HasOne("AjoCircle.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_record_amendments_users_created_by");
+
+                    b.HasOne("AjoCircle.Domain.Groups.Group", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_record_amendments_groups_group_id");
                 });
 #pragma warning restore 612, 618
         }

@@ -9,14 +9,57 @@ namespace AjoCircle.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1")]
-public sealed class GroupsController(GroupService groups, InvitationService invitations) : ControllerBase
+public sealed class GroupsController(GroupService groups, InvitationService invitations, SavingsService savings) : ControllerBase
 {
     /// <summary>Stateless calculation for the create-group wizard. Server totals are authoritative.</summary>
     [HttpPost("schemes/rotating/preview")]
     public SchemePreviewDto PreviewRules(RotatingRulesDto rules) => groups.Preview(rules);
 
+    [HttpPost("schemes/fixed-term/preview")]
+    public SchemePreviewDto PreviewFixedTerm(FixedTermRulesDto rules) => groups.PreviewFixedTerm(rules);
+
     [HttpGet("groups")]
     public Task<IReadOnlyList<GroupListItemDto>> List(CancellationToken ct) => groups.ListMineAsync(ct);
+
+    [HttpPost("groups/fixed-term")]
+    public async Task<ActionResult<GroupDetailDto>> CreateFixedTerm(CreateFixedTermGroupRequest req, CancellationToken ct)
+    {
+        var id = await savings.CreateAsync(req, ct);
+        return CreatedAtAction(nameof(Get), new { groupId = id }, await groups.GetAsync(id, ct));
+    }
+
+    [HttpPatch("groups/{groupId:guid}/fixed-term")]
+    public async Task<GroupDetailDto> UpdateFixedTermDraft(Guid groupId, CreateFixedTermGroupRequest req, CancellationToken ct)
+    {
+        await savings.UpdateDraftAsync(groupId, req, ct);
+        return await groups.GetAsync(groupId, ct);
+    }
+
+    [HttpPut("groups/{groupId:guid}/shares")]
+    public async Task<IReadOnlyList<MemberDto>> AssignShares(Guid groupId, AssignSharesRequest req, CancellationToken ct)
+    {
+        await savings.AssignSharesAsync(groupId, req, ct);
+        return await groups.MembersAsync(groupId, ct);
+    }
+
+    /// <summary>A member leaves a running fixed-term group early (themselves, or recorded by the organizer).</summary>
+    [HttpPost("groups/{groupId:guid}/members/{membershipId:guid}/exit")]
+    public async Task<GroupDetailDto> Exit(Guid groupId, Guid membershipId, ExitMemberRequest req, CancellationToken ct)
+    {
+        await savings.ExitAsync(groupId, membershipId, req, ct);
+        return await groups.GetAsync(groupId, ct);
+    }
+
+    /// <summary>Ends a fixed-term group's term and works out what is owed back to each member.</summary>
+    [HttpPost("groups/{groupId:guid}/complete")]
+    public async Task<GroupDetailDto> Complete(Guid groupId, CancellationToken ct)
+    {
+        await savings.CompleteAsync(groupId, ct);
+        return await groups.GetAsync(groupId, ct);
+    }
+
+    [HttpGet("groups/{groupId:guid}/payouts")]
+    public Task<IReadOnlyList<PayoutListItemDto>> Payouts(Guid groupId, CancellationToken ct) => groups.PayoutsAsync(groupId, ct);
 
     [HttpPost("groups")]
     public async Task<ActionResult<GroupDetailDto>> Create(CreateRotatingGroupRequest req, CancellationToken ct)

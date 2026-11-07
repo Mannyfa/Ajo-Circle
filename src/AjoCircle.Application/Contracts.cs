@@ -8,6 +8,8 @@ public sealed record RegisterRequest(string Email, string DisplayName, string Pa
 public sealed record LoginRequest(string Email, string Password);
 public sealed record VerifyContactRequest(string Code);
 public sealed record UpdateProfileRequest(string DisplayName);
+public sealed record ForgotPasswordRequest(string Email);
+public sealed record ResetPasswordRequest(string Token, string NewPassword);
 public sealed record MeDto(Guid Id, string Email, string DisplayName, bool ContactVerified, DateTimeOffset CreatedAt);
 
 // ---- Money ----
@@ -48,8 +50,10 @@ public sealed record SchemeSummaryDto(
     private static MoneyDto M(Domain.Common.Money m) => new(m.AmountMinor, m.Currency);
 }
 
-public sealed record RoundPlanDto(int RoundNumber, DateOnly ContributionDueDate, DateOnly PayoutDate);
-public sealed record SchemePreviewDto(SchemeSummaryDto Summary, IReadOnlyList<RoundPlanDto> Schedule);
+/// <summary>PayoutDate is null for fixed-term periods, which have no payout of their own.</summary>
+public sealed record RoundPlanDto(int RoundNumber, DateOnly ContributionDueDate, DateOnly? PayoutDate);
+/// <summary>Exactly one of Summary (rotating) or FixedTermSummary is set.</summary>
+public sealed record SchemePreviewDto(SchemeSummaryDto? Summary, IReadOnlyList<RoundPlanDto> Schedule, FixedTermSummaryDto? FixedTermSummary = null);
 
 // ---- Groups ----
 public sealed record CreateRotatingGroupRequest(string Name, RotatingRulesDto Rules);
@@ -63,24 +67,30 @@ public sealed record GroupListItemDto(
     Guid Id, string Name, SchemeType SchemeType, GroupStatus Status, ViewerRole ViewerRole,
     int MemberCount, int Capacity, MoneyDto Contribution, ContributionFrequency Frequency, DateOnly StartDate);
 
+/// <summary>Rules/Summary are set for a rotating ajo; FixedTermRules/FixedTermSummary for fixed-term savings.</summary>
 public sealed record GroupDetailDto(
     Guid Id, string Name, SchemeType SchemeType, GroupStatus Status, ViewerRole ViewerRole,
-    string OrganizerName, RotatingRulesDto Rules, SchemeSummaryDto Summary,
+    string OrganizerName, RotatingRulesDto? Rules, SchemeSummaryDto? Summary,
+    FixedTermRulesDto? FixedTermRules, FixedTermSummaryDto? FixedTermSummary, int Capacity,
     int? CurrentSchemeVersion, Guid? CurrentSchemeVersionId, int ActiveMemberCount,
     DateTimeOffset CreatedAt, DateTimeOffset? PublishedAt, DateTimeOffset? StartedAt,
-    DateTimeOffset? CancelledAt, string? CancellationReason,
-    MyMembershipDto? MyMembership, IReadOnlyList<string> AllowedActions);
+    DateTimeOffset? CancelledAt, string? CancellationReason, DateTimeOffset? CompletedAt,
+    MyMembershipDto? MyMembership, SavingsProgressDto? Savings, IReadOnlyList<string> AllowedActions);
 
-public sealed record MyMembershipDto(Guid MembershipId, int? PayoutPosition, int AcceptedSchemeVersion, DateTimeOffset JoinedAt);
+public sealed record MyMembershipDto(Guid MembershipId, int? PayoutPosition, int AcceptedSchemeVersion, DateTimeOffset JoinedAt,
+    MembershipStatus Status, DateTimeOffset? ExitedAt, int? ShareBasisPoints);
 
 /// <summary>Organizers see the roster. Members see first names / display names only, no contact details.</summary>
 public sealed record MemberDto(Guid MembershipId, string DisplayName, string? Email, int JoinSequence, int? PayoutPosition,
-    int AcceptedSchemeVersion, DateTimeOffset JoinedAt, bool IsYou);
+    int AcceptedSchemeVersion, DateTimeOffset JoinedAt, bool IsYou, MembershipStatus Status, DateTimeOffset? ExitedAt, string? ExitReason,
+    int? ShareBasisPoints);
 
-public sealed record SchemeVersionDto(Guid Id, int Version, RotatingRulesDto Rules, DateTimeOffset CreatedAt);
+public sealed record SchemeVersionDto(Guid Id, int Version, RotatingRulesDto? Rules, DateTimeOffset CreatedAt, FixedTermRulesDto? FixedTermRules = null);
 
-public sealed record RoundDto(Guid Id, int RoundNumber, DateOnly ContributionDueDate, DateOnly PayoutDate, RoundStatus Status,
-    string? PayoutRecipientName, MoneyDto ScheduledPayout, PayoutStatus PayoutStatus);
+/// <summary>Payout fields are null for fixed-term periods.</summary>
+public sealed record RoundDto(Guid Id, int RoundNumber, DateOnly ContributionDueDate, DateOnly? PayoutDate, RoundStatus Status,
+    string? PayoutRecipientName, MoneyDto? ScheduledPayout, PayoutStatus? PayoutStatus, Guid? PayoutId, bool PayoutIsYours,
+    RoundProgressDto? Progress);
 
 public sealed record ObligationDto(Guid Id, int RoundNumber, string MemberName, Guid MembershipId, MoneyDto Amount,
     DateOnly DueDate, ObligationStatus Status);
@@ -97,9 +107,18 @@ public sealed record InvitationDto(Guid Id, DateTimeOffset CreatedAt, DateTimeOf
 /// <summary>Safe public view: no member list, no contact details (brief §2, §4.4).</summary>
 public sealed record PublicInvitationDto(
     string GroupName, string OrganizerName, SchemeType SchemeType, Guid SchemeVersionId, int SchemeVersion,
-    RotatingRulesDto Rules, SchemeSummaryDto Summary, int SpotsRemaining, bool CanJoin, string? CannotJoinReason);
+    RotatingRulesDto? Rules, SchemeSummaryDto? Summary, int SpotsRemaining, bool CanJoin, string? CannotJoinReason,
+    FixedTermRulesDto? FixedTermRules = null, FixedTermSummaryDto? FixedTermSummary = null);
 
 public sealed record JoinGroupRequest(Guid AcceptedSchemeVersionId);
 public sealed record JoinResultDto(Guid GroupId, Guid MembershipId);
 
 public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, int Total);
+
+// ---- Notifications & settings ----
+public sealed record NotificationDto(Guid Id, Domain.Notifications.NotificationType Type, Guid? GroupId, string Title, string Body,
+    string LinkPath, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt);
+public sealed record NotificationPageDto(IReadOnlyList<NotificationDto> Items, int Page, int PageSize, int Total, int Unread);
+public sealed record UnreadCountDto(int Unread);
+public sealed record SettingsDto(bool EmailNotifications);
+public sealed record UpdateSettingsRequest(bool EmailNotifications);

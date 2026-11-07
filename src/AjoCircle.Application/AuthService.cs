@@ -2,10 +2,12 @@ using AjoCircle.Application.Contracts;
 using AjoCircle.Domain.Common;
 using AjoCircle.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace AjoCircle.Application;
 
-public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, IContactCodeSender codeSender, IAppClock clock, AuditWriter audit)
+public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, IEmailSender email, EmailTemplates templates, IAppClock clock, AuditWriter audit,
+    ILogger<AuthService> log)
 {
     public async Task<User> RegisterAsync(RegisterRequest req, CancellationToken ct)
     {
@@ -21,7 +23,7 @@ public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, ICont
         audit.Write(user.Id, "user.registered", "user", user.Id, null);
         await db.SaveChangesAsync(ct);
 
-        await codeSender.SendVerificationCodeAsync(user.Email, user.DisplayName, code, ct);
+        await email.SendAsync(templates.VerificationCode(user.Email, user.DisplayName, code), ct);
         return user;
     }
 
@@ -65,7 +67,63 @@ public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, ICont
         var (verification, code) = ContactVerification.Create(user.Id, clock.UtcNow);
         db.ContactVerifications.Add(verification);
         await db.SaveChangesAsync(ct);
-        await codeSender.SendVerificationCodeAsync(user.Email, user.DisplayName, code, ct);
+        await email.SendAsync(templates.VerificationCode(user.Email, user.DisplayName, code), ct);
+    }
+
+    /// <summary>
+    /// Starts account recovery. Always looks the same to the caller (no hint whether the email has an account), and sends
+    /// at most <see cref="PasswordResetToken.MaxPerHour"/> links per account per hour on top of the IP rate limit.
+    /// </summary>
+    public async Task ForgotPasswordAsync(ForgotPasswordRequest req, CancellationToken ct)
+    {
+        var normalized = User.NormalizeEmail(req.Email);
+        var user = await db.Users.SingleOrDefaultAsync(u => u.Email == normalized, ct);
+        if (user is null || user.Status != UserStatus.Active) return;
+        var now = clock.UtcNow;
+        var recent = await db.PasswordResetTokens.CountAsync(t => t.UserId == user.Id && t.CreatedAt > now.AddHours(-1), ct);
+        if (recent >= PasswordResetToken.MaxPerHour) return;
+
+        var (token, raw) = PasswordResetToken.Create(user.Id, now);
+        db.PasswordResetTokens.Add(token);
+        audit.Write(user.Id, "user.password_reset_requested", "user", user.Id, null);
+        await db.SaveChangesAsync(ct);
+        await SendQuietlyAsync(templates.PasswordReset(user.Email, user.DisplayName, raw), ct);
+    }
+
+    /// <summary>
+    /// For recovery emails a send failure must not change the response (that would reveal the account exists), and a
+    /// failed "password changed" notice must not report the reset itself as failed. Failures are logged without the address.
+    /// </summary>
+    private async Task SendQuietlyAsync(EmailMessage message, CancellationToken ct)
+    {
+        try { await email.SendAsync(message, ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.LogError(ex, "Account email could not be sent: {Subject}", message.Subject);
+        }
+    }
+
+    /// <summary>
+    /// Completes recovery: sets the new password, signs out every session (new security stamp), burns every outstanding
+    /// link, and — because the link proved control of the inbox — marks the email verified.
+    /// </summary>
+    public async Task ResetPasswordAsync(ResetPasswordRequest req, CancellationToken ct)
+    {
+        var now = clock.UtcNow;
+        var hash = PasswordResetToken.Hash(req.Token ?? "");
+        var token = await db.PasswordResetTokens.SingleOrDefaultAsync(t => t.TokenHash == hash, ct);
+        if (token is null || !token.IsUsable(now))
+            throw new DomainException("reset_link_invalid", "This reset link is invalid or has expired. Request a new one.");
+        User.ValidatePassword(req.NewPassword);
+
+        var user = await db.Users.SingleAsync(u => u.Id == token.UserId, ct);
+        user.SetPasswordHash(hasher.Hash(user, req.NewPassword)); // also rotates the security stamp → other sessions end
+        user.MarkContactVerified(now);
+        var outstanding = await db.PasswordResetTokens.Where(t => t.UserId == user.Id && t.ConsumedAt == null).ToListAsync(ct);
+        foreach (var t in outstanding) t.Consume(now);
+        audit.Write(user.Id, "user.password_reset", "user", user.Id, null);
+        await db.SaveChangesAsync(ct);
+        await SendQuietlyAsync(templates.PasswordChanged(user.Email, user.DisplayName), ct);
     }
 
     public async Task<MeDto> GetMeAsync(Guid userId, CancellationToken ct)

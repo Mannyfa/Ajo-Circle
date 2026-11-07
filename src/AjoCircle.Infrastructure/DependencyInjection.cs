@@ -21,15 +21,35 @@ public static class DependencyInjection
         services.AddSingleton<IAppClock, AppClock>();
         services.AddSingleton<IPasswordHashing, PasswordHashing>();
 
-        // Email/SMS vendor is an open decision (brief §16.3). Development logs codes locally; any other
-        // environment refuses to send until a real provider is wired in.
-        if (env.IsDevelopment()) services.AddSingleton<IContactCodeSender, DevelopmentLogCodeSender>();
-        else services.AddSingleton<IContactCodeSender, UnconfiguredCodeSender>();
+        var app = config.GetSection(AppOptions.Section).Get<AppOptions>() ?? new AppOptions();
+        services.AddSingleton(app);
+        services.AddSingleton<EmailTemplates>();
+
+        // Email vendor is an open decision (brief §16.3). If an SMTP server is configured, mail goes through it (locally
+        // that is Mailpit). Development also logs every email, so sign-up works even when Mailpit isn't running.
+        // Any other environment without SMTP refuses to send rather than pretending an email went out.
+        var smtp = config.GetSection(SmtpOptions.Section).Get<SmtpOptions>();
+        SmtpEmailSender? smtpSender = string.IsNullOrWhiteSpace(smtp?.Host) ? null : new SmtpEmailSender(smtp, app);
+        if (env.IsDevelopment())
+            services.AddSingleton<IEmailSender>(sp => new DevelopmentEmailSender(smtpSender, sp.GetRequiredService<ILogger<DevelopmentEmailSender>>()));
+        else if (smtpSender is not null) services.AddSingleton<IEmailSender>(smtpSender);
+        else services.AddSingleton<IEmailSender, UnconfiguredEmailSender>();
+
+        services.AddScoped<Notifier>();
+        services.AddScoped<NotificationService>();
+        services.AddScoped<NotificationDispatcher>();
+        services.AddScoped<ReminderScheduler>();
+        if (config.GetValue("Notifications:WorkerEnabled", true)) services.AddHostedService<NotificationWorker>();
 
         services.AddScoped<AuditWriter>();
         services.AddScoped<AuthService>();
+        services.AddScoped<SavingsLedger>();
+        services.AddScoped<SavingsService>();
         services.AddScoped<GroupService>();
         services.AddScoped<InvitationService>();
+        services.AddScoped<GroupAccess>();
+        services.AddScoped<RecordService>();
+        services.AddScoped<DisputeService>();
         return services;
     }
 }
@@ -51,17 +71,3 @@ public sealed class PasswordHashing : IPasswordHashing
         _hasher.VerifyHashedPassword(user, user.PasswordHash, password) != PasswordVerificationResult.Failed;
 }
 
-internal sealed class DevelopmentLogCodeSender(ILogger<DevelopmentLogCodeSender> log) : IContactCodeSender
-{
-    public Task SendVerificationCodeAsync(string email, string displayName, string code, CancellationToken ct)
-    {
-        log.LogWarning("[DEV ONLY] Verification code for {Email}: {Code}", email, code);
-        return Task.CompletedTask;
-    }
-}
-
-internal sealed class UnconfiguredCodeSender : IContactCodeSender
-{
-    public Task SendVerificationCodeAsync(string email, string displayName, string code, CancellationToken ct) =>
-        throw new InvalidOperationException("No email/SMS provider is configured for contact verification.");
-}

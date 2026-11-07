@@ -5,7 +5,8 @@ import { Alert, Button, Card, ErrorAlert, Loading } from '../../components/ui'
 import { useMe } from '../../hooks/useMe'
 import { api } from '../../lib/api'
 import type { JoinResult, PublicInvitation } from '../../types/api'
-import { SchemeTerms } from '../schemes/SchemeTerms'
+import { schemeLabel } from '../schemes/labels'
+import { GroupTerms } from '../schemes/SchemeTerms'
 
 /** Public invitation view: safe group details only, no member list (brief §4.4). */
 export function JoinPage() {
@@ -34,14 +35,14 @@ export function JoinPage() {
       <div>
         <p className="text-sm text-ink-soft">{inv.organizerName} invited you to join</p>
         <h1 className="text-2xl font-extrabold break-words">{inv.groupName}</h1>
-        <p className="mt-1 text-sm text-ink-soft">{inv.spotsRemaining} of {inv.rules.memberCount} places left · Terms version {inv.schemeVersion}</p>
+        <p className="mt-1 text-sm text-ink-soft">{schemeLabel[inv.schemeType]} · {inv.spotsRemaining} of {inv.rules?.memberCount ?? inv.fixedTermRules?.memberCount} places left · Terms version {inv.schemeVersion}</p>
       </div>
 
       {!inv.canJoin && <Alert tone="warn" title={inv.cannotJoinReason ?? 'This invitation cannot be used.'} />}
 
       <Card>
         <h2 className="mb-3 font-bold">Terms you are agreeing to</h2>
-        <SchemeTerms rules={inv.rules} summary={inv.summary} />
+        <GroupTerms rules={inv.rules} summary={inv.summary} fixedTermRules={inv.fixedTermRules} fixedTermSummary={inv.fixedTermSummary} />
       </Card>
 
       {inv.canJoin && (

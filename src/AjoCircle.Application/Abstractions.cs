@@ -1,6 +1,8 @@
 using AjoCircle.Domain.Audit;
 using AjoCircle.Domain.Groups;
 using AjoCircle.Domain.Identity;
+using AjoCircle.Domain.Notifications;
+using AjoCircle.Domain.Records;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -15,9 +17,17 @@ public interface IAppDbContext
     DbSet<GroupMembership> GroupMemberships { get; }
     DbSet<GroupInvitation> GroupInvitations { get; }
     DbSet<PayoutPosition> PayoutPositions { get; }
+    DbSet<AllocationShare> AllocationShares { get; }
     DbSet<SchemeRound> SchemeRounds { get; }
     DbSet<ContributionObligation> ContributionObligations { get; }
     DbSet<Payout> Payouts { get; }
+    DbSet<ContributionRecord> ContributionRecords { get; }
+    DbSet<PayoutRecord> PayoutRecords { get; }
+    DbSet<RecordAmendment> RecordAmendments { get; }
+    DbSet<Dispute> Disputes { get; }
+    DbSet<DisputeMessage> DisputeMessages { get; }
+    DbSet<Notification> Notifications { get; }
+    DbSet<PasswordResetToken> PasswordResetTokens { get; }
     DbSet<AuditLog> AuditLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
@@ -25,6 +35,9 @@ public interface IAppDbContext
 
     /// <summary>Loads a group under a row lock (SELECT … FOR UPDATE) so capacity checks are race-free.</summary>
     Task<Group?> LockGroupAsync(Guid groupId, CancellationToken ct = default);
+
+    /// <summary>Locks up to <paramref name="max"/> notifications due for email (FOR UPDATE SKIP LOCKED). Call inside a transaction.</summary>
+    Task<List<Notification>> ClaimPendingNotificationsAsync(DateTimeOffset now, int max, CancellationToken ct = default);
 }
 
 /// <summary>The authenticated caller. Identity comes from the server-side session, never from the request body.</summary>
@@ -44,12 +57,6 @@ public interface IPasswordHashing
 {
     string Hash(User user, string password);
     bool Verify(User user, string password);
-}
-
-/// <summary>Delivers one-time contact verification codes (email/SMS provider is an open decision).</summary>
-public interface IContactCodeSender
-{
-    Task SendVerificationCodeAsync(string email, string displayName, string code, CancellationToken ct);
 }
 
 public sealed class NotFoundException(string message = "The requested resource was not found.") : Exception(message);

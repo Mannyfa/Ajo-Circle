@@ -16,7 +16,7 @@ public sealed class ApiFixture : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _pg = new PostgreSqlBuilder("postgres:17").Build();
     public WebApplicationFactory<Program> Factory { get; private set; } = null!;
-    public CapturingCodeSender Codes { get; } = new();
+    public CapturingEmailSender Emails { get; } = new();
     public string ConnectionString => _pg.GetConnectionString();
 
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new JsonStringEnumConverter() } };
@@ -31,7 +31,9 @@ public sealed class ApiFixture : IAsyncLifetime
             b.UseSetting("Database:MigrateOnStartup", "true");
             b.UseSetting("RateLimits:AuthPerMinute", "10000");
             b.UseSetting("RateLimits:InvitationsPerMinute", "10000");
-            b.ConfigureTestServices(s => s.AddSingleton<IContactCodeSender>(Codes));
+            b.UseSetting("RateLimits:DisputesPerMinute", "10000");
+            b.UseSetting("Notifications:WorkerEnabled", "false"); // tests drive the dispatcher/scheduler explicitly
+            b.ConfigureTestServices(s => s.AddSingleton<IEmailSender>(Emails));
         });
         _ = Factory.Server; // boot + migrate
     }
@@ -57,20 +59,21 @@ public sealed class ApiFixture : IAsyncLifetime
         var email = $"{name.ToLowerInvariant()}.{Guid.NewGuid():N}@example.test";
         (await c.PostAsJsonAsync("/api/v1/auth/register", new { email, displayName = name, password = "correct-horse-battery", acceptTerms = true }))
             .EnsureSuccessStatusCode();
-        (await c.PostAsJsonAsync("/api/v1/auth/verify-contact", new { code = Codes.Latest(email) })).EnsureSuccessStatusCode();
+        (await c.PostAsJsonAsync("/api/v1/auth/verify-contact", new { code = Emails.LatestCode(email) })).EnsureSuccessStatusCode();
         return c;
     }
 }
 
-public sealed class CapturingCodeSender : IContactCodeSender
+/// <summary>Captures every email so tests can read codes and links. Thread-safe; tests run in parallel collections.</summary>
+public sealed class CapturingEmailSender : IEmailSender
 {
-    private readonly ConcurrentDictionary<string, string> _codes = new();
-    public Task SendVerificationCodeAsync(string email, string displayName, string code, CancellationToken ct)
-    {
-        _codes[email] = code;
-        return Task.CompletedTask;
-    }
-    public string Latest(string email) => _codes[email];
+    private readonly ConcurrentQueue<EmailMessage> _sent = new();
+    public Task SendAsync(EmailMessage message, CancellationToken ct) { _sent.Enqueue(message); return Task.CompletedTask; }
+    public IReadOnlyList<EmailMessage> To(string email) => _sent.Where(m => m.To == email).ToList();
+    public string LatestCode(string email) =>
+        System.Text.RegularExpressions.Regex.Match(To(email).Last(m => m.Subject.Contains("verification code")).TextBody, @"\b\d{6}\b").Value;
+    public string LatestResetToken(string email) =>
+        System.Text.RegularExpressions.Regex.Match(To(email).Last(m => m.Subject.Contains("Reset")).TextBody, @"token=([A-Za-z0-9_-]+)").Groups[1].Value;
 }
 
 [CollectionDefinition("api")]

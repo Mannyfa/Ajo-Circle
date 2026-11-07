@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { brand } from '../app/brand'
 import { useLogout, useMe } from '../hooks/useMe'
+import { NotificationBell } from '../features/notifications/NotificationPages'
 import { Alert, Loading } from './ui'
 
 function Logo() {
@@ -73,9 +74,16 @@ export function AppLayout() {
           <nav className="hidden gap-1 sm:flex">
             <NavLink to="/app" end className={tab}>My groups</NavLink>
             <NavLink to="/app/groups/new" className={tab}>New group</NavLink>
+            <NavLink to="/app/disputes" className={tab}>Disputes</NavLink>
           </nav>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="hidden max-w-36 truncate text-ink-soft sm:inline">{me.displayName}</span>
+          <div className="flex items-center gap-1 text-sm">
+            <NotificationBell />
+            <Link to="/app/settings" className="flex min-h-10 items-center rounded-xl px-2 text-ink-soft hover:bg-ink/5 hover:text-ink" aria-label={`Settings for ${me.displayName}`}>
+              <span className="hidden max-w-36 truncate sm:inline">{me.displayName}</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-5 sm:hidden" aria-hidden="true">
+                <circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" />
+              </svg>
+            </Link>
             <button
               className="rounded-xl px-3 py-2 font-semibold text-ink-soft hover:bg-ink/5"
               onClick={() => { navigate('/'); logout.mutate() }}
@@ -94,6 +102,7 @@ export function AppLayout() {
       <nav className="fixed inset-x-0 bottom-0 flex gap-2 border-t border-line bg-card px-4 py-2 sm:hidden" aria-label="Primary">
         <NavLink to="/app" end className={tab}>My groups</NavLink>
         <NavLink to="/app/groups/new" className={tab}>New group</NavLink>
+        <NavLink to="/app/disputes" className={tab}>Disputes</NavLink>
       </nav>
     </div>
   )

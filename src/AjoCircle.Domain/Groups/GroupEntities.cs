@@ -19,7 +19,8 @@ public sealed class SchemeVersion
         new() { Id = Guid.CreateVersion7(now), GroupId = groupId, Version = version, RulesJson = rulesJson, CreatedBy = createdBy, CreatedAt = now };
 }
 
-public enum MembershipStatus { Active, Removed }
+/// <summary>Exited = left a fixed-term group early; they keep read access to their own history and refund.</summary>
+public enum MembershipStatus { Active, Removed, Exited }
 
 public sealed class GroupMembership
 {
@@ -33,6 +34,23 @@ public sealed class GroupMembership
     public DateTimeOffset JoinedAt { get; private set; }
     public DateTimeOffset TermsAcceptedAt { get; private set; }
     public Guid? JoinedViaInvitationId { get; private set; }
+    public DateTimeOffset? ExitedAt { get; private set; }
+    public Guid? ExitedBy { get; private set; }
+    public string? ExitReason { get; private set; }
+
+    /// <summary>Leaves a fixed-term group early. What they paid is owed back to them (owner decision 2).</summary>
+    public void Exit(Guid actorId, string? reason, DateTimeOffset now)
+    {
+        if (Status != MembershipStatus.Active)
+            throw new DomainConflictException("member_not_active", "This member is no longer active in the group.");
+        var r = (reason ?? "").Trim();
+        if (r.Length is < 5 or > 500)
+            throw new DomainValidationException(new Dictionary<string, string[]> { ["reason"] = ["Give a reason of 5–500 characters."] });
+        Status = MembershipStatus.Exited;
+        ExitedAt = now;
+        ExitedBy = actorId;
+        ExitReason = r;
+    }
 
     public static GroupMembership Create(Guid groupId, Guid userId, int joinSequence, Guid acceptedVersionId, Guid invitationId, DateTimeOffset now) =>
         new()
@@ -135,7 +153,8 @@ public sealed class SchemeRound
 }
 
 /// <summary>What a member is scheduled to pay. An obligation is NOT money received (brief Rule 2).</summary>
-public enum ObligationStatus { Due, SubmittedForReview, RecordedByOrganizer, ConfirmedByMember, VerifiedByProvider, Disputed, Reversed }
+/// <summary>Cancelled = no longer owed because the member left or the group was cancelled before it fell due.</summary>
+public enum ObligationStatus { Due, SubmittedForReview, RecordedByOrganizer, ConfirmedByMember, VerifiedByProvider, Disputed, Reversed, Cancelled }
 
 public sealed class ContributionObligation
 {
@@ -155,17 +174,49 @@ public sealed class ContributionObligation
             Id = Guid.CreateVersion7(now), GroupId = groupId, MembershipId = membershipId, RoundId = roundId,
             AmountMinor = amount.AmountMinor, Currency = amount.Currency, DueDate = due, Status = ObligationStatus.Due,
         };
+
+    /// <summary>
+    /// The obligation's status mirrors its current (non-reversed) record, or Due when there is none. Status is never
+    /// set directly from a request (brief §6.2).
+    /// </summary>
+    /// <summary>Only an unpaid obligation is dropped; anything already recorded stays as history.</summary>
+    public bool CancelIfDue()
+    {
+        if (Status != ObligationStatus.Due) return false;
+        Status = ObligationStatus.Cancelled;
+        return true;
+    }
+
+    public void SyncWithRecord(Records.RecordStatus? current) => Status = current switch
+    {
+        null or Records.RecordStatus.Reversed => ObligationStatus.Due,
+        Records.RecordStatus.RecordedByOrganizer => ObligationStatus.RecordedByOrganizer,
+        Records.RecordStatus.ConfirmedByMember => ObligationStatus.ConfirmedByMember,
+        Records.RecordStatus.Disputed => ObligationStatus.Disputed,
+        _ => throw new ArgumentOutOfRangeException(nameof(current)),
+    };
 }
 
-/// <summary>A scheduled payout. Scheduled is not executed, funded or guaranteed (brief Rule 2).</summary>
-public enum PayoutStatus { Scheduled }
+/// <summary>
+/// A scheduled payout. Scheduled is not executed, funded or guaranteed (brief Rule 2). The other states reflect what
+/// the organizer reported and how the recipient responded; none of them means the app moved money.
+/// </summary>
+public enum PayoutStatus { Scheduled, RecordedByOrganizer, ConfirmedByRecipient, Disputed }
+
+/// <summary>
+/// What a payout is for. A rotating payout belongs to a round. The others are money the organizer owes back to a member
+/// of a fixed-term group: the release at the end, or a refund on early exit or cancellation (owner decision 2).
+/// </summary>
+public enum PayoutKind { RotatingPayout, Release, ExitRefund, CancellationRefund }
 
 public sealed class Payout
 {
     private Payout() { }
     public Guid Id { get; private set; }
     public Guid GroupId { get; private set; }
-    public Guid RoundId { get; private set; }
+    public PayoutKind Kind { get; private set; }
+    /// <summary>Set for rotating payouts only.</summary>
+    public Guid? RoundId { get; private set; }
     public Guid RecipientMembershipId { get; private set; }
     public long AmountMinor { get; private set; }
     public string Currency { get; private set; } = Currencies.Ngn;
@@ -175,7 +226,59 @@ public sealed class Payout
     public static Payout Create(Guid groupId, Guid roundId, Guid recipient, Money amount, DateOnly date, DateTimeOffset now) =>
         new()
         {
-            Id = Guid.CreateVersion7(now), GroupId = groupId, RoundId = roundId, RecipientMembershipId = recipient,
+            Id = Guid.CreateVersion7(now), GroupId = groupId, Kind = PayoutKind.RotatingPayout, RoundId = roundId, RecipientMembershipId = recipient,
             AmountMinor = amount.AmountMinor, Currency = amount.Currency, ScheduledDate = date, Status = PayoutStatus.Scheduled,
         };
+
+    /// <summary>Money the organizer owes back to a member. Only created when there is something to return.</summary>
+    public static Payout CreateOwedBack(Guid groupId, PayoutKind kind, Guid recipient, Money amount, DateOnly date, DateTimeOffset now)
+    {
+        if (kind == PayoutKind.RotatingPayout) throw new ArgumentException("Use Create for rotating payouts.", nameof(kind));
+        if (amount.AmountMinor <= 0) throw new DomainException("nothing_owed", "There is nothing to return.");
+        return new()
+        {
+            Id = Guid.CreateVersion7(now), GroupId = groupId, Kind = kind, RoundId = null, RecipientMembershipId = recipient,
+            AmountMinor = amount.AmountMinor, Currency = amount.Currency, ScheduledDate = date, Status = PayoutStatus.Scheduled,
+        };
+    }
+
+    /// <summary>Mirrors the current outcome record; back to Scheduled when the record is reversed without a replacement.</summary>
+    public void SyncWithRecord(Records.RecordStatus? current) => Status = current switch
+    {
+        null or Records.RecordStatus.Reversed => PayoutStatus.Scheduled,
+        Records.RecordStatus.RecordedByOrganizer => PayoutStatus.RecordedByOrganizer,
+        Records.RecordStatus.ConfirmedByMember => PayoutStatus.ConfirmedByRecipient,
+        Records.RecordStatus.Disputed => PayoutStatus.Disputed,
+        _ => throw new ArgumentOutOfRangeException(nameof(current)),
+    };
+}
+
+/// <summary>
+/// For a shared fixed-term group whose terms say the organizer assigns shares: each member's share of the released total
+/// in basis points (1/100 of a percent). Set after enrolment closes and before the group starts; locked once it starts.
+/// </summary>
+public sealed class AllocationShare
+{
+    public const int Whole = 10_000;
+
+    private AllocationShare() { }
+    public Guid Id { get; private set; }
+    public Guid GroupId { get; private set; }
+    public Guid MembershipId { get; private set; }
+    public int BasisPoints { get; private set; }
+    public Guid AssignedBy { get; private set; }
+    public DateTimeOffset AssignedAt { get; private set; }
+
+    public static AllocationShare Create(Guid groupId, Guid membershipId, int basisPoints, Guid assignedBy, DateTimeOffset now) =>
+        new() { Id = Guid.CreateVersion7(now), GroupId = groupId, MembershipId = membershipId, BasisPoints = basisPoints, AssignedBy = assignedBy, AssignedAt = now };
+
+    /// <summary>Every active member exactly once, each share 0–100%, and the shares add up to exactly 100%.</summary>
+    public static void Validate(IReadOnlyCollection<Guid> activeMembershipIds, IReadOnlyDictionary<Guid, int> shares)
+    {
+        var errors = new List<string>();
+        if (!shares.Keys.ToHashSet().SetEquals(activeMembershipIds)) errors.Add("Give every current member a share, and only current members.");
+        if (shares.Values.Any(v => v is < 0 or > Whole)) errors.Add("Each share must be between 0% and 100%.");
+        if (shares.Values.Sum() != Whole) errors.Add($"Shares must add up to exactly 100% (they add up to {shares.Values.Sum() / 100m:0.##}%).");
+        if (errors.Count > 0) throw new DomainValidationException(new Dictionary<string, string[]> { ["shares"] = errors.ToArray() });
+    }
 }

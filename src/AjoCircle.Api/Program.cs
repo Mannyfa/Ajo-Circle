@@ -48,6 +48,9 @@ builder.Services.AddRateLimiter(o =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = authLimit, Window = TimeSpan.FromMinutes(1) }));
     o.AddPolicy("invitations", c => RateLimitPartition.GetFixedWindowLimiter(Key(c),
         _ => new FixedWindowRateLimiterOptions { PermitLimit = inviteLimit, Window = TimeSpan.FromMinutes(1) }));
+    var disputeLimit = builder.Configuration.GetValue("RateLimits:DisputesPerMinute", 10);
+    o.AddPolicy("disputes", c => RateLimitPartition.GetFixedWindowLimiter(Key(c),
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = disputeLimit, Window = TimeSpan.FromMinutes(1) }));
 });
 
 var app = builder.Build();

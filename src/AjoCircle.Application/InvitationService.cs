@@ -1,12 +1,13 @@
 using AjoCircle.Application.Contracts;
 using AjoCircle.Domain.Common;
 using AjoCircle.Domain.Groups;
+using AjoCircle.Domain.Notifications;
 using AjoCircle.Domain.Schemes;
 using Microsoft.EntityFrameworkCore;
 
 namespace AjoCircle.Application;
 
-public sealed class InvitationService(IAppDbContext db, ICurrentUser currentUser, IAppClock clock, AuditWriter audit, GroupService groups)
+public sealed class InvitationService(IAppDbContext db, ICurrentUser currentUser, IAppClock clock, AuditWriter audit, GroupService groups, Notifier notifier)
 {
     private Guid Me => currentUser.UserId ?? throw new UnauthenticatedException();
 
@@ -51,7 +52,7 @@ public sealed class InvitationService(IAppDbContext db, ICurrentUser currentUser
     {
         var (inv, g) = await FindAsync(token, ct);
         var version = await db.SchemeVersions.AsNoTracking().SingleAsync(v => v.Id == g.CurrentSchemeVersionId, ct);
-        var rules = SchemeJson.Deserialize(version.RulesJson);
+        var capacity = g.Basics(version.RulesJson).MemberCount;
         var organizer = await db.Users.Where(u => u.Id == g.OrganizerId).Select(u => u.DisplayName).SingleAsync(ct);
         var active = await db.GroupMemberships.CountAsync(m => m.GroupId == g.Id && m.Status == MembershipStatus.Active, ct);
 
@@ -61,14 +62,21 @@ public sealed class InvitationService(IAppDbContext db, ICurrentUser currentUser
             "revoked" => "This invitation is no longer valid. Ask the organizer for a new link.",
             "used_up" => "This invitation has already been used.",
             _ => g.Status != GroupStatus.OpenForJoining ? "This group is no longer accepting members."
-               : active >= rules.MemberCount ? "This group is full." : null,
+               : active >= capacity ? "This group is full." : null,
         };
         if (reason is null && currentUser.UserId is { } uid &&
             await db.GroupMemberships.AnyAsync(m => m.GroupId == g.Id && m.UserId == uid && m.Status == MembershipStatus.Active, ct))
             reason = "You are already a member of this group.";
 
+        if (g.IsFixedTerm)
+        {
+            var f = SchemeJson.DeserializeFixedTerm(version.RulesJson);
+            return new PublicInvitationDto(g.Name, organizer, g.SchemeType, version.Id, version.Version, null, null,
+                Math.Max(0, capacity - active), reason is null, reason, FixedTermRulesDto.From(f), FixedTermSummaryDto.From(FixedTermCalculator.Summarize(f)));
+        }
+        var rules = SchemeJson.Deserialize(version.RulesJson);
         return new PublicInvitationDto(g.Name, organizer, g.SchemeType, version.Id, version.Version, RotatingRulesDto.From(rules),
-            SchemeSummaryDto.From(RotatingSchemeCalculator.Summarize(rules)), Math.Max(0, rules.MemberCount - active), reason is null, reason);
+            SchemeSummaryDto.From(RotatingSchemeCalculator.Summarize(rules)), Math.Max(0, capacity - active), reason is null, reason);
     }
 
     /// <summary>
@@ -93,15 +101,26 @@ public sealed class InvitationService(IAppDbContext db, ICurrentUser currentUser
         if (await db.GroupMemberships.AnyAsync(m => m.GroupId == g.Id && m.UserId == me, ct))
             throw new DomainConflictException("already_member", "You are already a member of this group.");
 
-        var rules = SchemeJson.Deserialize((await db.SchemeVersions.SingleAsync(v => v.Id == g.CurrentSchemeVersionId, ct)).RulesJson);
+        var capacity = g.Basics((await db.SchemeVersions.SingleAsync(v => v.Id == g.CurrentSchemeVersionId, ct)).RulesJson).MemberCount;
         var activeMembers = await db.GroupMemberships.Where(m => m.GroupId == g.Id && m.Status == MembershipStatus.Active).ToListAsync(ct);
 
-        var seq = g.AdmitMember(activeMembers.Count, rules.MemberCount, now);
+        var seq = g.AdmitMember(activeMembers.Count, capacity, now);
         inv.RecordUse(now);
         var membership = GroupMembership.Create(g.Id, me, seq, req.AcceptedSchemeVersionId, inv.Id, now);
         db.GroupMemberships.Add(membership);
         audit.Write(me, "membership.joined", "membership", membership.Id, g.Id,
             new { acceptedSchemeVersionId = req.AcceptedSchemeVersionId, joinSequence = seq, invitationId = inv.Id });
+
+        if (g.OrganizerId != me)
+        {
+            var joiner = await notifier.NameOfAsync(me, ct);
+            var full = g.Status == GroupStatus.ReadyToStart;
+            notifier.Add(g.OrganizerId, full ? NotificationType.GroupReadyToStart : NotificationType.MemberJoined, g.Id,
+                full ? $"{joiner} joined — {g.Name} is full and ready to start" : $"{joiner} joined {g.Name}",
+                full ? $"All {capacity} members have joined and accepted the terms. Check the payout order, then start the group."
+                     : $"{activeMembers.Count + 1} of {capacity} members have joined.",
+                full ? $"/app/groups/{g.Id}" : $"/app/groups/{g.Id}/members");
+        }
 
         if (g.Status == GroupStatus.ReadyToStart) // just became full
         {
