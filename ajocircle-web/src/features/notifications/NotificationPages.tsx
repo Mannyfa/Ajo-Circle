@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Bell } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { PageHeader } from '../../components/Layout'
@@ -18,11 +19,9 @@ export function NotificationBell() {
   })
   const n = q.data?.unread ?? 0
   return (
-    <Link to="/app/notifications" className="relative grid size-10 place-items-center rounded-xl text-ink-soft hover:bg-ink/5 hover:text-ink"
+    <Link to="/app/notifications" className="relative grid size-10 place-items-center rounded-lg text-ink-soft hover:bg-ink/5 hover:text-ink"
       aria-label={n > 0 ? `Notifications, ${n} unread` : 'Notifications'}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-5" aria-hidden="true">
-        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-      </svg>
+      <Bell aria-hidden className="size-5" />
       {n > 0 && (
         <span className="absolute -right-0.5 -top-0.5 min-w-5 rounded-full bg-tone-danger px-1 text-center text-[11px] font-bold leading-5 text-white" aria-hidden="true">
           {n > 99 ? '99+' : n}
@@ -54,7 +53,7 @@ export function NotificationsPage() {
       <div className="mb-3 flex gap-1" role="group" aria-label="Filter notifications">
         {[false, true].map((u) => (
           <button key={String(u)} aria-pressed={unreadOnly === u} onClick={() => setUnreadOnly(u)}
-            className={`rounded-xl px-3 py-2 text-sm font-semibold ${unreadOnly === u ? 'bg-ink text-white' : 'text-ink-soft hover:bg-ink/5'}`}>
+            className={`rounded-lg px-3 py-2 text-sm font-semibold ${unreadOnly === u ? 'bg-brand text-white' : 'text-ink-soft hover:bg-ink/5'}`}>
             {u ? `Unread${q.data ? ` (${q.data.unread})` : ''}` : 'All'}
           </button>
         ))}
@@ -63,7 +62,7 @@ export function NotificationsPage() {
       <ErrorAlert error={q.error ?? readAll.error} />
       {q.data?.items.length === 0 && <EmptyState title={unreadOnly ? 'You’re all caught up' : 'No notifications yet'}>We’ll let you know when something in your groups needs your attention.</EmptyState>}
       {q.data && q.data.items.length > 0 && (
-        <Card className="p-0 sm:p-0">
+        <Card flush>
           <ul className="divide-y divide-line">
             {q.data.items.map((n) => (
               <li key={n.id}>

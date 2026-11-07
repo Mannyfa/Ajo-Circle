@@ -40,7 +40,7 @@ export function PaymentForm({ fixedAmount, maxAmount, submitLabel, busy, error, 
     <form className="space-y-3" onSubmit={submit} noValidate>
       {intro && <p className="text-sm text-ink-soft">{intro}</p>}
       {fixedAmount ? (
-        <div className="rounded-xl bg-paper px-3 py-2 text-sm">
+        <div className="rounded-lg bg-paper px-3 py-2 text-sm">
           Amount <strong className="tabular-nums">{formatMoney(fixedAmount)}</strong>
           <span className="block text-xs text-ink-soft">The full contribution. Part payments aren’t supported yet.</span>
         </div>
@@ -84,7 +84,7 @@ export function RecordHistory({ records, payout, renderActions, hideDisputeLink 
   return (
     <ol className="space-y-3">
       {records.map((r) => (
-        <li key={r.id} className={`rounded-xl border p-3 ${r.status === 'Reversed' ? 'border-dashed border-line bg-paper/60' : 'border-line'}`}>
+        <li key={r.id} className={`rounded-lg border p-3 ${r.status === 'Reversed' ? 'border-dashed border-line bg-paper/60' : 'border-line'}`}>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className={`font-semibold tabular-nums ${r.status === 'Reversed' ? 'text-ink-soft line-through' : ''}`}>{formatMoney(r.amount)}</p>
@@ -124,7 +124,7 @@ export function CorrectionForm({ record, fixedAmount, maxAmount, busy, error, on
       <fieldset className="flex flex-wrap gap-2">
         <legend className="sr-only">Type of correction</legend>
         {(['replace', 'reverse'] as const).map((m) => (
-          <label key={m} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-semibold ${mode === m ? 'border-ink bg-ink/5' : 'border-line'}`}>
+          <label key={m} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${mode === m ? 'border-ink bg-ink/5' : 'border-line'}`}>
             <input type="radio" name="mode" value={m} checked={mode === m} onChange={() => setMode(m)} />
             {m === 'replace' ? 'Fix the details' : 'Reverse — it didn’t happen'}
           </label>
@@ -155,7 +155,7 @@ export function DisputeForm({ busy, error, onSubmit, onCancel }: {
   const [category, setCategory] = useState<DisputeCategory>('WrongAmount')
   const [description, setDescription] = useState('')
   return (
-    <form className="mt-3 space-y-3 rounded-xl border border-tone-danger/30 bg-tone-danger-bg/40 p-3" onSubmit={(e) => { e.preventDefault(); onSubmit(category, description) }}>
+    <form className="mt-3 space-y-3 rounded-lg border border-tone-danger/30 bg-tone-danger-bg/40 p-3" onSubmit={(e) => { e.preventDefault(); onSubmit(category, description) }}>
       <p className="text-sm">Only you and the organizer will see this. You’ll get a reference number to quote.</p>
       <Field label="What’s wrong?" error={fieldErrors(error, 'category')}>
         {(id, d) => (
@@ -166,7 +166,7 @@ export function DisputeForm({ busy, error, onSubmit, onCancel }: {
       </Field>
       <Field label="Explain what happened" hint="At least 10 characters." error={fieldErrors(error, 'description')}>
         {(id, d) => <textarea id={id} aria-describedby={d} rows={3} maxLength={1000} value={description} onChange={(e) => setDescription(e.target.value)}
-          className="block w-full rounded-xl border border-line bg-card px-3 py-2 text-base focus:border-brand focus:outline-none" />}
+          className="block w-full rounded-lg border border-line bg-card px-3 py-2 text-base focus:border-brand focus:outline-none" />}
       </Field>
       <ErrorAlert error={error} />
       <div className="flex flex-wrap gap-2">

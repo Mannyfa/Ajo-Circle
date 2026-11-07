@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet, useParams } from 'react-router-dom'
 import { PageHeader } from '../../components/Layout'
@@ -23,8 +24,9 @@ export function GroupLayout() {
   const refresh = () => qc.invalidateQueries({ queryKey: ['group', groupId] })
   const isOrganizer = g.viewerRole === 'Organizer'
   const base = `/app/groups/${g.id}`
+  // Underline tabs: the corporate convention for sections of one record.
   const tab = ({ isActive }: { isActive: boolean }) =>
-    `whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold ${isActive ? 'bg-ink text-white' : 'text-ink-soft hover:bg-ink/5'}`
+    `-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors ${isActive ? 'border-brand text-brand' : 'border-transparent text-ink-soft hover:border-line-strong hover:text-ink'}`
 
   return (
     <>
@@ -47,11 +49,12 @@ export function GroupLayout() {
       {g.status === 'Cancelled' && (
         <div className="mb-4"><Alert tone="danger" title="This group was cancelled">{g.cancellationReason}{g.cancelledAt && <span className="block text-xs">on {formatDateTime(g.cancelledAt)}</span>}</Alert></div>
       )}
-      <nav className="-mx-4 mb-4 flex gap-1 overflow-x-auto px-4 pb-1" aria-label="Group sections">
+      <nav className="-mx-4 mb-5 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line px-4 sm:mx-0 sm:px-0" aria-label="Group sections">
         <NavLink to={base} end className={tab}>Overview</NavLink>
         <NavLink to={`${base}/members`} className={tab}>Members</NavLink>
         <NavLink to={`${base}/payouts`} className={tab}>{g.fixedTermRules ? 'Money owed back' : 'Payout schedule'}</NavLink>
         <NavLink to={`${base}/contributions`} className={tab}>{isOrganizer ? 'Contributions' : 'My contributions'}</NavLink>
+        {g.startedAt && <NavLink to={`${base}/reports`} className={tab}>Reports</NavLink>}
         {isOrganizer && <NavLink to={`${base}/activity`} className={tab}>Activity</NavLink>}
       </nav>
       <Outlet context={{ group: g, refresh } satisfies GroupCtx} />
@@ -67,13 +70,17 @@ function Lifecycle({ status }: { status: GroupDetail['status'] }) {
   if (status === 'Cancelled' || status === 'Suspended') return null
   const idx = stages.findIndex(([s]) => s === status)
   return (
-    <ol className="mb-4 flex items-center gap-1 text-[11px] font-semibold" aria-label="Group lifecycle">
+    <ol className="mb-5 flex items-center rounded-[var(--radius-card)] border border-line bg-card px-3 py-3 shadow-[var(--shadow-card)] sm:px-5" aria-label="Group lifecycle">
       {stages.map(([s, label], i) => (
-        <li key={s} aria-current={i === idx ? 'step' : undefined} className="flex flex-1 flex-col items-center gap-1">
-          <span className={`h-1.5 w-full rounded-full ${i <= idx ? 'bg-brand' : 'bg-line'}`} />
-          <span className={i === idx ? 'text-ink' : 'text-ink-soft'}>{label}</span>
+        <li key={s} aria-current={i === idx ? 'step' : undefined} className="flex flex-1 items-center gap-2 last:flex-none">
+          <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${i < idx ? 'bg-brand text-white' : i === idx ? 'bg-brand text-white ring-4 ring-brand/15' : 'bg-paper text-ink-soft ring-1 ring-line-strong'}`}>
+            {i < idx ? <Check aria-hidden className="size-3.5" strokeWidth={3} /> : i + 1}
+          </span>
+          <span className={`hidden text-xs font-semibold sm:inline ${i === idx ? 'text-ink' : 'text-ink-soft'}`}>{label}</span>
+          {i < stages.length - 1 && <span aria-hidden className={`mx-1 h-px flex-1 ${i < idx ? 'bg-brand' : 'bg-line-strong'}`} />}
         </li>
       ))}
+      <li className="sr-only">Current stage: {stages[idx]?.[1]}</li>
     </ol>
   )
 }
@@ -114,7 +121,7 @@ function OrganizerActions({ group: g, onDone }: { group: GroupDetail; onDone: ()
       </div>
       <ErrorAlert error={run.error} />
       {completing && (
-        <div className="space-y-3 rounded-xl border border-line bg-paper p-3">
+        <div className="space-y-3 rounded-lg border border-line bg-paper p-3">
           <p className="text-sm">This ends the term. Using the payments recorded so far and the agreed rule, the app works out what you owe back to each member. Contributions never recorded stay unpaid. You can’t undo this.</p>
           <div className="flex gap-2">
             <Button busy={run.isPending && run.variables === 'complete'} onClick={() => run.mutate('complete', { onSuccess: () => setCompleting(false) })}>Yes, complete the term</Button>
@@ -123,7 +130,7 @@ function OrganizerActions({ group: g, onDone }: { group: GroupDetail; onDone: ()
         </div>
       )}
       {cancelling && (
-        <form className="space-y-3 rounded-xl border border-tone-danger/30 bg-tone-danger-bg/50 p-3" onSubmit={(e) => { e.preventDefault(); cancel.mutate() }}>
+        <form className="space-y-3 rounded-lg border border-tone-danger/30 bg-tone-danger-bg/50 p-3" onSubmit={(e) => { e.preventDefault(); cancel.mutate() }}>
           {g.status === 'Active' && <p className="text-sm">Cancelling a running savings group drops all unpaid contributions, and you’ll owe each member back what was recorded as paid by them.</p>}
           <Field label="Reason for cancelling" hint="Members will see this reason.">
             {(id, d) => <TextInput id={id} aria-describedby={d} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />}

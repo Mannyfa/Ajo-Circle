@@ -60,3 +60,12 @@ public sealed record SavingsProgressDto(
 public sealed record PayoutListItemDto(
     Guid Id, PayoutKind Kind, int? RoundNumber, string RecipientName, Guid RecipientMembershipId, bool IsYours,
     MoneyDto Amount, DateOnly ScheduledDate, PayoutStatus Status);
+
+// ---- Reports (brief §14.2) ----
+public sealed record ReportTable(AjoCircle.Application.ReportKind Kind, string Title, string GroupName, DateOnly AsOf,
+    IReadOnlyList<string> Columns, IReadOnlyList<IReadOnlyList<string>> Rows, string Note);
+
+/// <summary>Headline figures for the Reports tab. ForYou = a member's own figures; otherwise the whole group's.</summary>
+public sealed record ReportSummaryDto(bool ForYou, string GroupName, DateOnly AsOf, MoneyDto ScheduledToDate, MoneyDto Recorded,
+    int OverdueCount, MoneyDto OverdueAmount, int RecordedCount, int ConfirmedCount, int OpenDisputes,
+    IReadOnlyList<AjoCircle.Application.ReportKind> Available);

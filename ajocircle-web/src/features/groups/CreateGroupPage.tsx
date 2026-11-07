@@ -72,7 +72,7 @@ export function CreateGroupPage() {
       <ol className="mb-5 flex gap-2 text-xs font-semibold" aria-label="Progress">
         {steps.map((s, i) => (
           <li key={s} aria-current={i === step ? 'step' : undefined}
-            className={`flex-1 rounded-full px-3 py-1.5 text-center ${i === step ? 'bg-ink text-white' : i < step ? 'bg-ink/10 text-ink' : 'bg-card text-ink-soft border border-line'}`}>
+            className={`flex-1 rounded-full px-3 py-1.5 text-center ${i === step ? 'bg-brand text-white' : i < step ? 'bg-ink/10 text-ink' : 'bg-card text-ink-soft border border-line'}`}>
             {i + 1}. {s}
           </li>
         ))}
@@ -93,7 +93,7 @@ export function CreateGroupPage() {
             <legend className="mb-2 text-sm font-semibold">Scheme type</legend>
             <div className="grid gap-2 sm:grid-cols-3">
               {kinds.map((k) => (
-                <label key={k.value} className={`flex cursor-pointer gap-3 rounded-xl p-3 ${kind === k.value ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
+                <label key={k.value} className={`flex cursor-pointer gap-3 rounded-lg p-3 ${kind === k.value ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
                   <input type="radio" name="scheme" value={k.value} checked={kind === k.value} onChange={() => { setKind(k.value); preview.reset() }} className="mt-1 accent-brand" />
                   <span><span className="block font-semibold">{k.title}</span><span className="text-sm text-ink-soft">{k.text}</span></span>
                 </label>

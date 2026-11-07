@@ -5,7 +5,7 @@ import { allocationLabel } from './labels'
 
 function TermsList({ rows }: { rows: [string, string][] }) {
   return (
-    <dl className="divide-y divide-line rounded-xl border border-line">
+    <dl className="divide-y divide-line rounded-lg border border-line">
       {rows.map(([k, v]) => (
         <div key={k} className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3 px-3 py-2.5 text-sm">
           <dt className="text-ink-soft">{k}</dt>
@@ -91,7 +91,7 @@ export function GroupTerms({ rules, summary, fixedTermRules, fixedTermSummary }:
 export function ScheduleTable({ schedule, recipients }: { schedule: RoundPlan[]; recipients?: Record<number, string | null> }) {
   const hasPayouts = schedule.some((r) => r.payoutDate)
   return (
-    <div className="overflow-x-auto rounded-xl border border-line">
+    <div className="overflow-x-auto rounded-lg border border-line">
       <table className={`w-full text-sm ${hasPayouts ? 'min-w-[420px]' : ''}`}>
         <thead className="bg-paper text-left text-xs uppercase tracking-wider text-ink-soft">
           <tr>

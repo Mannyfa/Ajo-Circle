@@ -1,36 +1,48 @@
 @import "tailwindcss";
 
 /*
- * Brand tokens. "AjoCircle" is a working name (brief §1.5): change the palette here and the
- * name in src/app/brand.ts — nothing else hard-codes branding.
+ * Design tokens — corporate fintech direction: deep navy brand, cool neutral surfaces, slate text, restrained radius.
+ * "AjoCircle" is a working name (brief §1.5): change the palette here and the name in src/app/brand.ts — nothing else
+ * hard-codes branding. Text/background pairs below meet WCAG AA (4.5:1) on white and on --color-paper.
  */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
-  --color-ink: #1f2a44;          /* primary text, headers */
-  --color-ink-soft: #4a5572;
-  --color-paper: #faf7f2;        /* app background */
+  --color-ink: #0f172a;          /* primary text — 17.9:1 on white */
+  --color-ink-soft: #475569;     /* secondary text — 7.6:1 on white */
+  --color-paper: #f4f6f9;        /* app background */
   --color-card: #ffffff;
-  --color-line: #e6e0d6;
-  --color-brand: #b4532a;        /* terracotta accent */
-  --color-brand-dark: #8f3f1d;
-  --color-brand-soft: #fbeee6;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
 
-  /* Status tones. Never green for scheduled/unverified money (brief §5.6). */
-  --color-tone-neutral: #5b6478;
-  --color-tone-neutral-bg: #eef0f4;
-  --color-tone-info: #1d5fa8;
-  --color-tone-info-bg: #e7f0fb;
-  --color-tone-warn: #8a5a00;
-  --color-tone-warn-bg: #fdf3dc;
-  --color-tone-danger: #a3242a;
-  --color-tone-danger-bg: #fbe9ea;
-  --color-tone-verified: #1e6b45;
-  --color-tone-verified-bg: #e4f4ea;
+  --color-brand: #0b3b66;        /* deep navy — primary actions, active nav */
+  --color-brand-dark: #072a4a;
+  --color-brand-soft: #e8f0f8;
+  --color-accent: #b7791f;       /* gold — highlights only, never status */
+
+  /* Status tones. Never green for scheduled/unverified money (brief §5.6); green is provider-verified only. */
+  --color-tone-neutral: #475569;
+  --color-tone-neutral-bg: #f1f5f9;
+  --color-tone-info: #1d4ed8;
+  --color-tone-info-bg: #eff4ff;
+  --color-tone-warn: #8a5300;
+  --color-tone-warn-bg: #fff7e6;
+  --color-tone-danger: #b42318;
+  --color-tone-danger-bg: #fef1f0;
+  --color-tone-verified: #146c43;
+  --color-tone-verified-bg: #e8f5ee;
+
+  --radius-card: 0.625rem;
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
 }
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; font-feature-settings: "cv11", "ss01"; }
   body { @apply bg-paper text-ink antialiased; }
-  :focus-visible { outline: 3px solid var(--color-brand); outline-offset: 2px; }
+  /* Money and counts line up in columns. */
+  .tabular-nums, table { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
 }

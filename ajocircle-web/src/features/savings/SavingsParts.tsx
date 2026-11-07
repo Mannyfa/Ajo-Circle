@@ -75,7 +75,7 @@ export function RecordExit({ groupId, member, onDone }: { groupId: string; membe
   const exit = useMutation({ mutationFn: () => api.post(`/groups/${groupId}/members/${member.membershipId}/exit`, { reason }), onSuccess: () => { setOpen(false); onDone() } })
   if (!open) return <Button variant="ghost" className="min-h-9 px-2 text-xs" onClick={() => setOpen(true)} aria-label={`Record that ${member.displayName} left`}>Record leaving</Button>
   return (
-    <form className="mt-2 basis-full space-y-2 rounded-xl border border-line bg-paper p-3" onSubmit={(e) => { e.preventDefault(); exit.mutate() }}>
+    <form className="mt-2 basis-full space-y-2 rounded-lg border border-line bg-paper p-3" onSubmit={(e) => { e.preventDefault(); exit.mutate() }}>
       <p className="text-sm">{member.displayName}’s unpaid contributions will be dropped and you’ll owe them back what was recorded as paid by them.</p>
       <Field label="Reason">
         {(id) => <TextInput id={id} value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} />}
@@ -152,7 +152,7 @@ export function OwedBackList({ group }: { group: GroupDetail }) {
         <ul className="divide-y divide-line">
           {q.data.map((p) => (
             <li key={p.id}>
-              <Link to={`/app/groups/${group.id}/payouts/${p.id}`} className="-mx-2 grid grid-cols-[1fr_auto] items-center gap-3 rounded-xl px-2 py-3 hover:bg-ink/5">
+              <Link to={`/app/groups/${group.id}/payouts/${p.id}`} className="-mx-2 grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg px-2 py-3 hover:bg-ink/5">
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{p.recipientName}{p.isYours && <span className="ml-1 text-xs font-normal text-brand-dark">(you)</span>}</p>
                   <p className="text-xs text-ink-soft">{payoutKindLabel[p.kind]} · due {formatDate(p.scheduledDate)}</p>

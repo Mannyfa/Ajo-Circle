@@ -7,15 +7,15 @@ export function LandingPage() {
     <div className="mx-auto max-w-5xl px-4">
       <section className="py-10 sm:py-16">
         <p className="mb-3 inline-block rounded-full bg-brand-soft px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-dark">For ajo organizers</p>
-        <h1 className="max-w-2xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
+        <h1 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
           Every member sees the same rules, dates and records.
         </h1>
         <p className="mt-4 max-w-xl text-lg text-ink-soft">
-          {brand.tagline} Set up rotating ajo groups, invite members with a link, and keep a clear history of who owes what and when.
+          {brand.tagline} Set up rotating ajo or savings groups, invite members with a link, and keep a clear history of who owes what and when.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link to="/register" className="rounded-xl bg-brand px-5 py-3 font-semibold text-white hover:bg-brand-dark">Create your first group</Link>
-          <a href="#how" className="rounded-xl border border-line bg-card px-5 py-3 font-semibold">How it works</a>
+          <Link to="/register" className="rounded-lg bg-brand px-5 py-3 font-semibold text-white hover:bg-brand-dark">Create your first group</Link>
+          <a href="#how" className="rounded-lg border border-line bg-card px-5 py-3 font-semibold">How it works</a>
         </div>
       </section>
 
@@ -46,7 +46,7 @@ export function LandingPage() {
 export function TrustPage() {
   return (
     <article className="mx-auto max-w-2xl space-y-4 px-4 py-10">
-      <h1 className="text-3xl font-extrabold">Trust & Safety</h1>
+      <h1 className="text-3xl font-semibold">Trust & Safety</h1>
       <p>{brand.name} is a record-keeping tool for savings groups. It is not a bank, wallet, escrow service or payment processor.</p>
       <ul className="list-disc space-y-2 pl-5 text-ink-soft">
         <li>We do not collect, hold, pool or transfer member funds. Scheduled amounts are obligations, not money received.</li>
@@ -62,7 +62,7 @@ export function TrustPage() {
 export function PolicyPlaceholder({ title }: { title: string }) {
   return (
     <article className="mx-auto max-w-2xl space-y-4 px-4 py-10">
-      <h1 className="text-3xl font-extrabold">{title}</h1>
+      <h1 className="text-3xl font-semibold">{title}</h1>
       <Alert tone="warn" title="Draft — pending legal review">
         This document has not been finalized. It must be reviewed by qualified Nigerian legal counsel (including NDPA data-protection requirements) before a public pilot.
       </Alert>

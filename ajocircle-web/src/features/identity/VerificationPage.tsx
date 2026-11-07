@@ -114,12 +114,12 @@ function SubmitStep({ current }: { current: IdentityLevel }) {
         <fieldset className="grid gap-2 sm:grid-cols-2">
           <legend className="mb-2 text-sm font-semibold">What do you want to do?</legend>
           {current === 'None' && (
-            <label className={`flex cursor-pointer gap-3 rounded-xl p-3 ${level === 'Member' ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
+            <label className={`flex cursor-pointer gap-3 rounded-lg p-3 ${level === 'Member' ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
               <input type="radio" name="level" checked={level === 'Member'} onChange={() => setLevel('Member')} className="mt-1 accent-brand" />
               <span><span className="block font-semibold">Join groups</span><span className="text-sm text-ink-soft">Phone and one ID document.</span></span>
             </label>
           )}
-          <label className={`flex cursor-pointer gap-3 rounded-xl p-3 ${level === 'Organizer' ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
+          <label className={`flex cursor-pointer gap-3 rounded-lg p-3 ${level === 'Organizer' ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
             <input type="radio" name="level" checked={level === 'Organizer'} onChange={() => setLevel('Organizer')} className="mt-1 accent-brand" />
             <span><span className="block font-semibold">Run groups too</span><span className="text-sm text-ink-soft">Also your BVN and a passport photograph.</span></span>
           </label>

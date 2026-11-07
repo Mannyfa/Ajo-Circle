@@ -65,6 +65,7 @@ public static class DependencyInjection
         services.AddScoped<InvitationService>();
         services.AddScoped<GroupAccess>();
         services.AddScoped<RecordService>();
+        services.AddScoped<ReportService>();
         services.AddScoped<DisputeService>();
         return services;
     }

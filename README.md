@@ -175,6 +175,20 @@ cd ajocircle-web && npm run build && npm run lint
   persisted to shared, backed-up storage (e.g. the database or a key vault) before real data is stored — if the keys
   are lost, encrypted documents can't be read. In development it lives in your user profile.
 
+## Slice 6 — reports, exports and a corporate UI
+
+- **Reports tab** on every started group (brief §14.2): roster, contributions by member and round, outstanding
+  (no payment recorded after the due date), payouts and owed-back amounts, timeline with terms history (organizer
+  only), and disputes. Headline figures: due to date, recorded, overdue, open disputes. Preview on screen or download
+  CSV. Exports contain only what the requester can see in the app; evidence references and dispute messages are never
+  exported; spreadsheet formula injection is neutralised; UTF-8 BOM so Excel shows ₦ and names correctly; every export
+  is in the activity log.
+- **Visual refresh** (corporate fintech): deep navy brand, cool neutral surfaces, slate text at AA contrast, Inter
+  (bundled, no third-party font request), 8px radius, SVG icons (Lucide) instead of text glyphs, desktop sidebar,
+  mobile bottom tab bar (4 items, safe-area aware), underline section tabs, numbered lifecycle stepper, KPI tiles.
+  Status badges still pair an icon with text and keep green for provider-verified only. Less-used screens (create
+  wizard, verification, reports, operations) load on demand.
+
 ## Product decisions from the owner (7 Nov 2026)
 
 1. **Shared-target savings: the organizer (group admin) decides how the money is shared.** To meet brief §7.3 ("store
@@ -212,8 +226,7 @@ when a rotating round or group counts as **completed**.
 
 ## Next slices (brief §17.1)
 
-1. Reports and exports (contributions, payouts/owed back, outstanding) — CSV.
-2. Persist the Data Protection key ring; choose a licensed BVN/ID verification provider and SMS vendor (open items).
-3. Organizer reminder settings (overdue alerts, timing); reminders for money owed back.
-4. Idempotency keys on record-creating requests; the automated 10-member end-to-end journey (brief §13.4).
-5. Rotating round/group completion rules once the open question above is decided.
+1. Persist the Data Protection key ring; choose a licensed BVN/ID verification provider and SMS vendor (open items).
+2. Organizer reminder settings (overdue alerts, timing); reminders for money owed back.
+3. Idempotency keys on record-creating requests; the automated 10-member end-to-end journey (brief §13.4).
+4. Rotating round/group completion rules once the open question above is decided.

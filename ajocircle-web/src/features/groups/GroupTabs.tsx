@@ -152,7 +152,7 @@ function PayoutOrderEditor({ groupId, members }: { groupId: string; members: Mem
       <p className="text-sm text-ink-soft">Position 1 receives the round 1 payout, and so on. {assigned ? 'Saved — you can still adjust it until the group starts.' : 'Not saved yet.'}</p>
       <ol className="space-y-1.5">
         {order.map((m, i) => (
-          <li key={m.membershipId} className="flex items-center gap-2 rounded-xl border border-line px-3 py-2">
+          <li key={m.membershipId} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2">
             <span className="w-8 font-bold tabular-nums">#{i + 1}</span>
             <span className="flex-1 truncate">{m.displayName}</span>
             <button className="grid size-9 place-items-center rounded-lg hover:bg-ink/5 disabled:opacity-30" disabled={i === 0} onClick={() => move(i, -1)} aria-label={`Move ${m.displayName} up`}>↑</button>
@@ -219,7 +219,7 @@ function RotatingPayouts({ active }: { active: boolean }) {
 /** A full-width row that links when the viewer may open it, and is plain text otherwise. */
 function RowLink({ to, children }: { to: string | null; children: ReactNode }) {
   const cls = 'grid grid-cols-[auto_1fr_auto] items-center gap-3 py-3'
-  return to ? <Link to={to} className={`${cls} -mx-2 rounded-xl px-2 hover:bg-ink/5`}>{children}</Link> : <div className={cls}>{children}</div>
+  return to ? <Link to={to} className={`${cls} -mx-2 rounded-lg px-2 hover:bg-ink/5`}>{children}</Link> : <div className={cls}>{children}</div>
 }
 
 export function GroupContributionsTab() {

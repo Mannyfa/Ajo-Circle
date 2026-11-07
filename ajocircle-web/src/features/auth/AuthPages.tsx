@@ -15,7 +15,7 @@ function safeNext(raw: string | null, fallback = '/app') {
 function AuthShell({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <div className="mx-auto max-w-md px-4 py-8">
-      <h1 className="text-2xl font-extrabold">{title}</h1>
+      <h1 className="text-2xl font-semibold">{title}</h1>
       {subtitle && <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>}
       <Card className="mt-5">{children}</Card>
     </div>

@@ -2,9 +2,6 @@ import { createBrowserRouter } from 'react-router-dom'
 import { AppLayout, PublicLayout } from '../components/Layout'
 import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage, VerifyPage } from '../features/auth/AuthPages'
 import { NotificationsPage, SettingsPage } from '../features/notifications/NotificationPages'
-import { VerificationPage } from '../features/identity/VerificationPage'
-import { AuditSearchPage, OperationsDisputesPage, OperationsLayout, VerificationQueuePage, VerificationReviewPage } from '../features/operations/OperationsPages'
-import { CreateGroupPage } from '../features/groups/CreateGroupPage'
 import { DashboardPage } from '../features/groups/DashboardPage'
 import { GroupLayout } from '../features/groups/GroupLayout'
 import { GroupActivityTab, GroupContributionsTab, GroupMembersTab, GroupOverviewTab, GroupPayoutsTab } from '../features/groups/GroupTabs'
@@ -12,6 +9,10 @@ import { JoinPage } from '../features/members/JoinPage'
 import { DisputeDetailPage, DisputesPage } from '../features/disputes/DisputePages'
 import { ContributionDetailPage, PayoutDetailPage } from '../features/records/RecordPages'
 import { LandingPage, PolicyPlaceholder, TrustPage } from '../pages/PublicPages'
+
+// Less-used screens load on demand so the first visit stays light on mobile data (operations staff, reports,
+// the create wizard and identity verification are each their own chunk).
+const ops = () => import('../features/operations/OperationsPages')
 
 // URL map follows brief §5.5.
 export const router = createBrowserRouter([
@@ -37,11 +38,11 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: 'groups', element: <DashboardPage /> },
-      { path: 'groups/new', element: <CreateGroupPage /> },
+      { path: 'groups/new', lazy: () => import('../features/groups/CreateGroupPage').then((m) => ({ Component: m.CreateGroupPage })) },
       { path: 'disputes', element: <DisputesPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'settings', element: <SettingsPage /> },
-      { path: 'verification', element: <VerificationPage /> },
+      { path: 'verification', lazy: () => import('../features/identity/VerificationPage').then((m) => ({ Component: m.VerificationPage })) },
       { path: 'disputes/:disputeId', element: <DisputeDetailPage /> },
       {
         path: 'groups/:groupId',
@@ -54,6 +55,7 @@ export const router = createBrowserRouter([
           { path: 'contributions', element: <GroupContributionsTab /> },
           { path: 'contributions/:obligationId', element: <ContributionDetailPage /> },
           { path: 'activity', element: <GroupActivityTab /> },
+          { path: 'reports', lazy: () => import('../features/reports/ReportsTab').then((m) => ({ Component: m.GroupReportsTab })) },
         ],
       },
     ],
@@ -64,13 +66,13 @@ export const router = createBrowserRouter([
     element: <AppLayout />,
     children: [
       {
-        element: <OperationsLayout />,
+        lazy: () => ops().then((m) => ({ Component: m.OperationsLayout })),
         children: [
-          { index: true, element: <VerificationQueuePage /> },
-          { path: 'verifications/:id', element: <VerificationReviewPage /> },
-          { path: 'disputes', element: <OperationsDisputesPage /> },
+          { index: true, lazy: () => ops().then((m) => ({ Component: m.VerificationQueuePage })) },
+          { path: 'verifications/:id', lazy: () => ops().then((m) => ({ Component: m.VerificationReviewPage })) },
+          { path: 'disputes', lazy: () => ops().then((m) => ({ Component: m.OperationsDisputesPage })) },
           { path: 'disputes/:disputeId', element: <DisputeDetailPage operations /> },
-          { path: 'audit', element: <AuditSearchPage /> },
+          { path: 'audit', lazy: () => ops().then((m) => ({ Component: m.AuditSearchPage })) },
         ],
       },
     ],

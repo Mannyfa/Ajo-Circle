@@ -28,7 +28,7 @@ export function DisputesPage() {
   })
   const filter = (s: DisputeStatus | 'All', label: string) => (
     <button onClick={() => setStatus(s)} aria-pressed={status === s}
-      className={`rounded-xl px-3 py-2 text-sm font-semibold ${status === s ? 'bg-ink text-white' : 'text-ink-soft hover:bg-ink/5'}`}>{label}</button>
+      className={`rounded-lg px-3 py-2 text-sm font-semibold ${status === s ? 'bg-brand text-white' : 'text-ink-soft hover:bg-ink/5'}`}>{label}</button>
   )
   return (
     <>
@@ -38,7 +38,7 @@ export function DisputesPage() {
       <ErrorAlert error={q.error} />
       {q.data?.length === 0 && <EmptyState title={status === 'Open' ? 'No open disputes' : 'No disputes'}>If a record about you looks wrong, open it from the group and choose “Report a problem”.</EmptyState>}
       {q.data && q.data.length > 0 && (
-        <Card className="p-0 sm:p-0">
+        <Card flush>
           <ul className="divide-y divide-line">
             {q.data.map((d) => (
               <li key={d.id}>
@@ -123,7 +123,7 @@ export function DisputeDetailPage({ operations = false }: { operations?: boolean
           {d.messages.length === 0 && <p className="text-sm text-ink-soft">No replies yet.</p>}
           <ol className="space-y-2">
             {d.messages.map((m) => (
-              <li key={m.id} className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.isYou ? 'ml-auto bg-ink text-white' : 'bg-paper'}`}>
+              <li key={m.id} className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${m.isYou ? 'ml-auto bg-brand text-white' : 'bg-paper'}`}>
                 <p className="whitespace-pre-wrap">{m.body}</p>
                 <p className={`mt-1 text-[11px] ${m.isYou ? 'text-white/70' : 'text-ink-soft'}`}>{m.isYou ? 'You' : m.authorName}{m.isOrganizer && ' (organizer)'}{m.isOperations && ' (operations)'} · {formatDateTime(m.createdAt)}</p>
               </li>
@@ -133,7 +133,7 @@ export function DisputeDetailPage({ operations = false }: { operations?: boolean
             <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); reply.mutate() }}>
               <label htmlFor="reply" className="sr-only">Your reply</label>
               <textarea id="reply" rows={2} maxLength={1000} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Write a reply…"
-                className="block w-full rounded-xl border border-line bg-card px-3 py-2 text-base focus:border-brand focus:outline-none" />
+                className="block w-full rounded-lg border border-line bg-card px-3 py-2 text-base focus:border-brand focus:outline-none" />
               <ErrorAlert error={reply.error} />
               <Button type="submit" variant="secondary" busy={reply.isPending} disabled={!body.trim()}>Send reply</Button>
             </form>
@@ -149,7 +149,7 @@ export function DisputeDetailPage({ operations = false }: { operations?: boolean
                 <p className="text-sm">Withdrawing marks the record as confirmed by you. If something is still wrong later, you can raise a new dispute.</p>
                 <label htmlFor="wnote" className="block text-sm font-semibold">Note (optional)</label>
                 <input id="wnote" value={note} maxLength={500} onChange={(e) => setNote(e.target.value)}
-                  className="block w-full min-h-11 rounded-xl border border-line bg-card px-3 py-2 text-base focus:border-brand focus:outline-none" />
+                  className="block w-full min-h-11 rounded-lg border border-line bg-card px-3 py-2 text-base focus:border-brand focus:outline-none" />
                 <ErrorAlert error={withdraw.error} />
                 <div className="flex gap-2">
                   <Button busy={withdraw.isPending} onClick={() => withdraw.mutate()}>Confirm withdrawal</Button>
@@ -209,7 +209,7 @@ function DecisionForm({ disputeId, onDone }: { disputeId: string; onDone: (d: Di
         <legend className="sr-only">Decision</legend>
         {([['RecordUpheld', 'The record stands', 'Closes the dispute. The member can’t dispute this record again.'],
            ['CorrectionRequired', 'It needs correcting', 'The organizer must correct or reverse it; that closes the dispute.']] as const).map(([v, t, h]) => (
-          <label key={v} className={`flex cursor-pointer gap-3 rounded-xl p-3 ${decision === v ? 'border-2 border-ink bg-ink/5' : 'border border-line'}`}>
+          <label key={v} className={`flex cursor-pointer gap-3 rounded-lg p-3 ${decision === v ? 'border-2 border-ink bg-ink/5' : 'border border-line'}`}>
             <input type="radio" name="decision" checked={decision === v} onChange={() => setDecision(v)} className="mt-1" />
             <span><span className="block font-semibold">{t}</span><span className="text-sm text-ink-soft">{h}</span></span>
           </label>
@@ -217,7 +217,7 @@ function DecisionForm({ disputeId, onDone }: { disputeId: string; onDone: (d: Di
       </fieldset>
       <label htmlFor="finding" className="block text-sm font-semibold">Finding (both parties will see this)</label>
       <textarea id="finding" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)}
-        className="block w-full rounded-xl border border-line bg-card px-3 py-2 text-base focus:border-brand focus:outline-none" />
+        className="block w-full rounded-lg border border-line bg-card px-3 py-2 text-base focus:border-brand focus:outline-none" />
       <ErrorAlert error={m.error} />
       <Button busy={m.isPending} disabled={!decision || note.trim().length < 10} onClick={() => m.mutate()}>Record decision</Button>
     </Card>

@@ -23,7 +23,7 @@ export function OperationsLayout() {
   if (!me?.isOperations) return <EmptyState title="Not found">This page doesn’t exist.</EmptyState>
   if (!me.mfaEnabled) return <MfaSetup />
   if (!me.operationsSessionActive) return <MfaPrompt />
-  const tab = ({ isActive }: { isActive: boolean }) => `whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold ${isActive ? 'bg-ink text-white' : 'text-ink-soft hover:bg-ink/5'}`
+  const tab = ({ isActive }: { isActive: boolean }) => `whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${isActive ? 'bg-brand text-white' : 'text-ink-soft hover:bg-ink/5'}`
   return (
     <>
       <PageHeader title="Operations" subtitle="Everything you open here is recorded in the audit log." />
@@ -101,7 +101,7 @@ export function VerificationQueuePage() {
       <ErrorAlert error={q.error} />
       {q.data?.length === 0 && <EmptyState title="Nothing here">No identity checks with this status.</EmptyState>}
       {q.data && q.data.length > 0 && (
-        <Card className="p-0 sm:p-0">
+        <Card flush>
           <ul className="divide-y divide-line">
             {q.data.map((v) => (
               <li key={v.id}>
@@ -217,7 +217,7 @@ export function OperationsDisputesPage() {
       <ErrorAlert error={q.error} />
       {q.data?.length === 0 && <EmptyState title="No escalated disputes">Disputes appear here when the member or organizer escalates them.</EmptyState>}
       {q.data && q.data.length > 0 && (
-        <Card className="p-0 sm:p-0">
+        <Card flush>
           <ul className="divide-y divide-line">
             {q.data.map((d) => (
               <li key={d.id}>
@@ -269,7 +269,7 @@ export function AuditSearchPage() {
       {q.isLoading && <Loading />}
       <ErrorAlert error={q.error} />
       {q.data && (
-        <Card className="overflow-x-auto p-0 sm:p-0">
+        <Card flush className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead className="bg-paper text-left text-xs uppercase tracking-wider text-ink-soft">
               <tr><th className="px-3 py-2">When</th><th className="px-3 py-2">Action</th><th className="px-3 py-2">Who</th><th className="px-3 py-2">Group</th></tr>
@@ -304,7 +304,7 @@ function Filters<T extends string>({ value, options, onChange }: { value: T; opt
     <div className="flex gap-1" role="group" aria-label="Filter">
       {options.map((o) => (
         <button key={o} aria-pressed={value === o} onClick={() => onChange(o)}
-          className={`rounded-xl px-3 py-2 text-sm font-semibold ${value === o ? 'bg-ink text-white' : 'text-ink-soft hover:bg-ink/5'}`}>{o}</button>
+          className={`rounded-lg px-3 py-2 text-sm font-semibold ${value === o ? 'bg-brand text-white' : 'text-ink-soft hover:bg-ink/5'}`}>{o}</button>
       ))}
     </div>
   )
