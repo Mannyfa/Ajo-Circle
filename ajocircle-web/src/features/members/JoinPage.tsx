@@ -35,7 +35,7 @@ export function JoinPage() {
     <div className="mx-auto max-w-xl space-y-4 px-4 py-6">
       <div>
         <p className="text-sm text-ink-soft">{inv.organizerName} invited you to join</p>
-        <h1 className="text-2xl font-semibold break-words">{inv.groupName}</h1>
+        <h1 className="break-words text-[32px] font-light leading-[1.1] tracking-[-0.035em]">{inv.groupName}</h1>
         <p className="mt-1 text-sm text-ink-soft">{schemeLabel[inv.schemeType]} · {inv.spotsRemaining} of {inv.rules?.memberCount ?? inv.fixedTermRules?.memberCount} places left · Terms version {inv.schemeVersion}</p>
       </div>
 
@@ -52,7 +52,7 @@ export function JoinPage() {
             <>
               <p className="text-sm">Create an account or sign in to join. You’ll come straight back here.</p>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Link to={`/register?next=${encodeURIComponent(here)}`} className="flex-1 rounded-lg bg-brand px-4 py-3 text-center font-semibold text-white">Create account</Link>
+                <Link to={`/register?next=${encodeURIComponent(here)}`} className="flex-1 rounded-lg bg-lime px-4 py-3 text-center font-medium text-ink hover:bg-lime-hover">Create account</Link>
                 <Link to={`/login?next=${encodeURIComponent(here)}`} className="flex-1 rounded-lg border border-line px-4 py-3 text-center font-semibold">Sign in</Link>
               </div>
             </>

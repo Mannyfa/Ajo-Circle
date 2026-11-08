@@ -191,9 +191,11 @@ cd ajocircle-web && npm run build && npm run lint
 
 ## Slice 7 — brand guide, public site, and separate organizer and member workspaces
 
-- **Brand** from the UI specification §4: Midnight Navy, Deep Teal, Mint accent (decorative only), Cloud White canvas,
-  Slate muted text, amber for warnings only, Inter. Tokens live in `ajocircle-web/src/styles/index.css`; the working
-  name, pricing copy and social links in `ajocircle-web/src/app/brand.ts`.
+- **Look** (owner's choice, replacing the spec §4 navy/teal palette): warm editorial style with a paper-toned canvas,
+  near-black ink, a lime highlight for primary actions (always with dark text), olive accent text, hairline borders
+  instead of shadows, light-weight display headings and mono labels, set in Geist and Geist Mono (self-hosted).
+  Tokens live in `ajocircle-web/src/styles/index.css`; the working name, pricing copy and social links in
+  `ajocircle-web/src/app/brand.ts`.
 - **Public website** (spec §5): homepage sections in the specified order, How It Works, Features, For Organizers,
   Pricing (no invented price), About, Contact, and draft Privacy, Terms and financial-services disclaimer pages marked
   as pending legal review. 403/404 pages and a global error boundary.

@@ -97,7 +97,7 @@ export function AppLayout({ workspace: ws = 'organizer' }: { workspace?: Workspa
         <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
           <SideSection items={workspace} />
           <div>
-            <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-white/50">Account</p>
+            <p className="px-3 pb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-white/45">Account</p>
             <SideSection items={account} />
           </div>
         </nav>
@@ -127,14 +127,14 @@ export function AppLayout({ workspace: ws = 'organizer' }: { workspace?: Workspa
       </aside>
 
       {/* Top bar */}
-      <header className="sticky top-0 z-10 border-b border-line bg-card/95 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-line bg-paper/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6">
           <div className="md:hidden"><Link to={`${base}/dashboard`} aria-label="Dashboard"><img src="/favicon.svg" alt="" className="size-8" /></Link></div>
-          <p className="min-w-0 flex-1 truncate text-base font-semibold md:text-lg">{title}</p>
+          <p className="min-w-0 flex-1 truncate text-[15px] font-medium tracking-[-0.01em] md:text-base">{title}</p>
           <GlobalSearch base={base} />
           <NotificationBell />
           <Link to={`${base}/settings`} aria-label="Your profile and settings"
-            className="hidden size-10 place-items-center rounded-full bg-teal-soft text-xs font-bold text-teal hover:ring-2 hover:ring-teal/30 sm:grid">{initials(me)}</Link>
+            className="hidden size-9 place-items-center rounded-full bg-lime text-xs font-semibold text-ink hover:ring-2 hover:ring-ink/15 sm:grid">{initials(me)}</Link>
         </div>
       </header>
 
@@ -152,15 +152,15 @@ export function AppLayout({ workspace: ws = 'organizer' }: { workspace?: Workspa
       <main id="main" className="mx-auto max-w-7xl px-4 pb-28 pt-6 sm:px-6 md:pb-12 md:pt-8"><Outlet /></main>
 
       {/* Phone bottom tabs */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Primary">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-paper/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)] md:hidden" aria-label="Primary">
         {tabs.map((item) => (
           <NavLink key={item.to} to={item.to} end={item.end}
-            className={({ isActive }) => `flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${isActive ? 'text-teal' : 'text-ink-soft'}`}>
+            className={({ isActive }) => `relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${isActive ? 'text-ink before:absolute before:inset-x-5 before:top-0 before:h-0.5 before:rounded-b before:bg-ink' : 'text-ink-soft'}`}>
             {({ isActive }) => (<><item.icon aria-hidden className="size-5" strokeWidth={isActive ? 2.4 : 2} />{({ 'My Groups': 'Groups', Notifications: 'Alerts', Contributions: 'Records' } as Record<string, string>)[item.label] ?? item.label}</>)}
           </NavLink>
         ))}
         <button type="button" onClick={() => setDrawer(true)} aria-haspopup="dialog" aria-expanded={drawer}
-          className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-ink-soft">
+          className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium text-ink-soft">
           <Menu aria-hidden className="size-5" />More
         </button>
       </nav>
@@ -183,7 +183,7 @@ function GlobalSearch({ base }: { base: string }) {
     <form role="search" onSubmit={submit} className="relative hidden w-72 lg:block">
       <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-soft" />
       <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search your groups" aria-label="Search your groups"
-        className="h-10 w-full rounded-lg border border-line bg-paper pl-9 pr-3 text-sm placeholder:text-ink-soft focus:border-teal focus:bg-card focus:outline-none focus:ring-2 focus:ring-teal/15" />
+        className="h-9 w-full rounded-lg border border-line bg-card pl-9 pr-3 text-sm placeholder:text-ink-soft focus:border-ink/40 focus:outline-none focus:ring-2 focus:ring-ink/10" />
     </form>
   )
 }
@@ -194,7 +194,7 @@ function SideSection({ items }: { items: NavItem[] }) {
       {items.map((item) => (
         <li key={item.to}>
           <NavLink to={item.to} end={item.end}
-            className={({ isActive }) => `relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${isActive ? 'bg-white/10 text-white before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r before:bg-mint' : 'text-white/70 hover:bg-white/5 hover:text-white'}`}>
+            className={({ isActive }) => `relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-[13px] font-medium transition-colors ${isActive ? 'bg-white/10 text-white before:absolute before:inset-y-2 before:left-0 before:w-1 before:rounded-r before:bg-mint' : 'text-white/70 hover:bg-white/5 hover:text-white'}`}>
             {({ isActive }) => (<><item.icon aria-hidden className={`size-[18px] shrink-0 ${isActive ? 'text-mint' : ''}`} />{item.label}</>)}
           </NavLink>
         </li>
@@ -206,7 +206,7 @@ function SideSection({ items }: { items: NavItem[] }) {
 function ProfileRow({ me, onSignOut, inverse }: { me: Me; onSignOut: () => void; inverse?: boolean }) {
   return (
     <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-      <span aria-hidden className={`grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold ${inverse ? 'bg-white/10 text-mint' : 'bg-teal-soft text-teal'}`}>{initials(me)}</span>
+      <span aria-hidden className={`grid size-9 shrink-0 place-items-center rounded-full text-xs font-bold ${inverse ? 'bg-lime text-ink' : 'bg-lime text-ink'}`}>{initials(me)}</span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold">{me.displayName}</span>
         <span className={`block truncate text-xs ${inverse ? 'text-white/55' : 'text-ink-soft'}`}>{me.email}</span>
@@ -239,12 +239,12 @@ function NavDrawer({ open, onClose, me, sections, onSignOut, home }: { open: boo
         <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4" aria-label="All sections">
           {sections.map(([label, items]) => (
             <div key={label}>
-              <p className="px-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">{label}</p>
+              <p className="px-3 pb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-soft">{label}</p>
               <ul className="space-y-0.5">
                 {items.map((item) => (
                   <li key={item.to}>
                     <NavLink to={item.to} end={item.end}
-                      className={({ isActive }) => `flex min-h-12 items-center gap-3 rounded-lg px-3 text-base font-medium ${isActive ? 'bg-teal-soft text-teal' : 'text-ink hover:bg-paper'}`}>
+                      className={({ isActive }) => `flex min-h-12 items-center gap-3 rounded-lg px-3 text-base font-medium ${isActive ? 'bg-lime text-ink' : 'text-ink hover:bg-subtle'}`}>
                       <item.icon aria-hidden className="size-5 shrink-0" />{item.label}<ChevronRight aria-hidden className="ml-auto size-4 text-ink-soft" />
                     </NavLink>
                   </li>
@@ -274,7 +274,7 @@ export function PageHeader({ title, subtitle, actions, back }: { title: ReactNod
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight break-words text-ink sm:text-[1.75rem]">{title}</h1>
+          <h1 className="break-words text-[28px] font-light leading-[1.1] tracking-[-0.035em] text-ink sm:text-[34px]">{title}</h1>
           {subtitle && <div className="mt-1 text-sm text-ink-soft">{subtitle}</div>}
         </div>
         {actions && <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap [&>*]:w-full sm:[&>*]:w-auto">{actions}</div>}

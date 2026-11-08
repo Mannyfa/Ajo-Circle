@@ -45,12 +45,12 @@ export function JoinWithInvite({ compact }: { compact?: boolean }) {
 
 function Metric({ icon: Icon, label, value, note }: { icon: LucideIcon; label: string; value: ReactNode; note?: ReactNode }) {
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-card p-4 shadow-[var(--shadow-card)]">
+    <div className="rounded-[var(--radius-card)] border border-line bg-card p-4">
       <div className="flex items-start justify-between gap-2">
         <dt className="text-xs font-medium text-ink-soft sm:text-sm">{label}</dt>
         <Icon aria-hidden className="size-4 shrink-0 text-teal" />
       </div>
-      <dd className="mt-2 text-xl font-semibold tabular-nums tracking-tight sm:text-2xl">{value}</dd>
+      <dd className="mt-2 text-2xl font-light tabular-nums tracking-[-0.035em] sm:text-[28px]">{value}</dd>
       {note && <dd className="mt-0.5 text-xs text-ink-soft">{note}</dd>}
     </div>
   )
@@ -126,7 +126,7 @@ export function MemberDashboardPage() {
 
 function MemberGroupCard({ g }: { g: GroupListItem }) {
   return (
-    <Link to={`/member/groups/${g.id}`} className="group flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-card p-4 shadow-[var(--shadow-card)] transition-[border-color,box-shadow] hover:border-teal/40 hover:shadow-[var(--shadow-raised)]">
+    <Link to={`/member/groups/${g.id}`} className="group flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-card p-4 transition-[border-color,box-shadow] hover:border-teal/40 hover:shadow-[var(--shadow-raised)]">
       <div className="flex items-start gap-3">
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg bg-teal-soft text-teal"><Users className="size-5" /></span>
         <div className="min-w-0 flex-1">
@@ -199,7 +199,7 @@ export function MemberContributionsPage() {
           <ul className="mt-4 space-y-3 md:hidden">
             {rows.map((o) => (
               <li key={o.id}>
-                <Link to={`/member/groups/${o.groupId}/contributions/${o.id}`} className="block rounded-[var(--radius-card)] border border-line bg-card p-4 shadow-[var(--shadow-card)]">
+                <Link to={`/member/groups/${o.groupId}/contributions/${o.id}`} className="block rounded-[var(--radius-card)] border border-line bg-card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0"><p className="truncate font-semibold">{o.groupName}</p><p className="text-xs text-ink-soft">Round {o.roundNumber} · due {shortDate(o.dueDate)}</p></div>
                     <p className="shrink-0 font-semibold tabular-nums">{formatMoney(o.amount)}</p>
@@ -212,7 +212,7 @@ export function MemberContributionsPage() {
           <Card flush className="mt-4 hidden md:block">
             <div className="overflow-x-auto" role="region" aria-label="My contributions" tabIndex={0}>
               <table className="w-full text-sm">
-                <thead className="bg-paper text-left text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                <thead className="bg-paper text-left font-mono text-[11px] uppercase tracking-[0.08em] text-ink-soft">
                   <tr><th scope="col" className="px-4 py-3">Group</th><th scope="col" className="px-4 py-3">Round</th><th scope="col" className="px-4 py-3">Due</th><th scope="col" className="px-4 py-3 text-right">Amount</th><th scope="col" className="px-4 py-3">Status</th><th scope="col" className="px-4 py-3"><span className="sr-only">Open</span></th></tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -281,7 +281,7 @@ export function MemberCannotCreatePage() {
       <PageHeader title="Only organizers create groups" back={{ to: '/member/dashboard', label: 'Dashboard' }} />
       <Card className="max-w-xl">
         <p className="text-sm text-ink-soft">Your account is a member account. To run your own groups, complete an organizer check (ID, BVN, phone and passport photo). When our team approves it, your account moves to the organizer workspace and keeps all your current groups.</p>
-        <Link to="/member/verification" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark">Become an organizer</Link>
+        <Link to="/member/verification" className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg bg-lime px-4 text-sm font-medium text-ink hover:bg-lime-hover">Become an organizer</Link>
       </Card>
     </>
   )

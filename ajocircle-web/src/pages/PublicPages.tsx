@@ -1,5 +1,5 @@
 import {
-  AlertTriangle, ArrowRight, BookOpenCheck, CalendarClock, CheckCircle2, ChevronDown, CircleDot, ClipboardList, FileBarChart,
+  AlertTriangle, ArrowRight, Check, BookOpenCheck, CalendarClock, CheckCircle2, ChevronDown, CircleDot, ClipboardList, FileBarChart,
   FileText, History, Layers, Link2, Mail, MessageSquare, PiggyBank, Repeat, Scale, ShieldCheck, UserPlus, Users, type LucideIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -44,14 +44,14 @@ const faqs: { q: string; a: ReactNode }[] = [
 
 function Section({ id, eyebrow, title, intro, children, tone = 'white' }: { id?: string; eyebrow?: string; title: string; intro?: ReactNode; children: ReactNode; tone?: 'white' | 'canvas' }) {
   return (
-    <section id={id} aria-labelledby={id ? `${id}-title` : undefined} className={`${tone === 'canvas' ? 'bg-paper' : 'bg-card'} py-14 sm:py-20`}>
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+    <section id={id} aria-labelledby={id ? `${id}-title` : undefined} className={`scroll-mt-16 border-t border-line ${tone === 'canvas' ? 'bg-card' : ''}`}>
+      <div className="frame py-20 sm:py-28">
         <div className="max-w-2xl">
-          {eyebrow && <p className="text-xs font-semibold uppercase tracking-wider text-teal">{eyebrow}</p>}
-          <h2 id={id ? `${id}-title` : undefined} className="mt-2 text-2xl font-semibold tracking-tight text-balance sm:text-3xl">{title}</h2>
-          {intro && <p className="mt-3 text-base text-ink-soft sm:text-lg">{intro}</p>}
+          {eyebrow && <p className="eyebrow mb-5">{eyebrow}</p>}
+          <h2 id={id ? `${id}-title` : undefined} className="section-title">{title}</h2>
+          {intro && <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-ink-soft sm:text-base">{intro}</p>}
         </div>
-        <div className="mt-8 sm:mt-10">{children}</div>
+        <div className="mt-12 sm:mt-16">{children}</div>
       </div>
     </section>
   )
@@ -59,20 +59,25 @@ function Section({ id, eyebrow, title, intro, children, tone = 'white' }: { id?:
 
 function IconCard({ icon: Icon, title, text, index }: { icon: LucideIcon; title: string; text: string; index?: number }) {
   return (
-    <div className="h-full rounded-[var(--radius-card)] border border-line bg-card p-5 shadow-[var(--shadow-card)]">
-      <div className="flex items-center gap-3">
-        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg bg-teal-soft text-teal"><Icon className="size-5" /></span>
-        {index != null && <span className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Step {index}</span>}
+    index != null ? (
+      <div className="h-full border-t border-line-strong pt-6">
+        <span className="inline-flex rounded-sm bg-lime px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.08em] tabular-nums text-ink">Step {index}</span>
+        <h3 className="mt-3 text-[17px] font-medium tracking-[-0.01em]">{title}</h3>
+        <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">{text}</p>
       </div>
-      <h3 className="mt-4 font-semibold">{title}</h3>
-      <p className="mt-1 text-sm leading-relaxed text-ink-soft">{text}</p>
-    </div>
+    ) : (
+      <div className="flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-card p-6">
+        <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-subtle text-ink"><Icon className="size-5" strokeWidth={1.75} /></span>
+        <h3 className="mt-6 text-[15px] font-medium tracking-[-0.01em]">{title}</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">{text}</p>
+      </div>
+    )
   )
 }
 
 function StepsGrid() {
   return (
-    <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <ol className="grid gap-10 sm:grid-cols-2 sm:gap-8 lg:grid-cols-4">
       {steps.map((s, i) => <li key={s.title}><IconCard {...s} index={i + 1} /></li>)}
     </ol>
   )
@@ -106,10 +111,10 @@ function SchemeTypes() {
 
 function SchemeCard({ icon: Icon, title, points }: { icon: LucideIcon; title: string; points: string[] }) {
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-card p-6 shadow-[var(--shadow-card)]">
+    <div className="rounded-[var(--radius-card)] border border-line bg-card p-6">
       <div className="flex items-center gap-3">
-        <span aria-hidden className="grid size-11 place-items-center rounded-lg bg-brand text-white"><Icon className="size-5" /></span>
-        <h3 className="text-lg font-semibold">{title}</h3>
+        <span aria-hidden className="grid size-11 place-items-center rounded-[10px] bg-lime text-ink"><Icon className="size-5" strokeWidth={1.75} /></span>
+        <h3 className="text-lg font-medium tracking-[-0.01em]">{title}</h3>
       </div>
       <ul className="mt-4 space-y-2.5">
         {points.map((p) => <li key={p} className="flex gap-2.5 text-sm text-ink-soft"><CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-teal" />{p}</li>)}
@@ -128,7 +133,7 @@ function Transparency() {
   ]
   return (
     <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr] lg:items-start">
-      <ul className="divide-y divide-line rounded-[var(--radius-card)] border border-line bg-card shadow-[var(--shadow-card)]">
+      <ul className="divide-y divide-line rounded-[var(--radius-card)] border border-line bg-card">
         {statuses.map((s) => (
           <li key={s.label} className="flex flex-col gap-1.5 p-4 sm:flex-row sm:items-center sm:gap-4">
             <span className={`inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold sm:w-52 ${s.cls}`}><s.icon aria-hidden className="size-3.5" />{s.label}</span>
@@ -147,14 +152,14 @@ function Transparency() {
 
 function Faqs() {
   return (
-    <div className="mx-auto max-w-3xl divide-y divide-line rounded-[var(--radius-card)] border border-line bg-card shadow-[var(--shadow-card)]">
+    <div className="max-w-3xl border-t border-line">
       {faqs.map((f) => (
-        <details key={f.q} className="group">
-          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 font-medium [&::-webkit-details-marker]:hidden">
+        <details key={f.q} className="group border-b border-line">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-6 py-5 text-[15px] font-medium [&::-webkit-details-marker]:hidden">
             {f.q}
-            <ChevronDown aria-hidden className="size-5 shrink-0 text-ink-soft transition-transform group-open:rotate-180" />
+            <ChevronDown aria-hidden className="size-4 shrink-0 text-ink-soft transition-transform duration-200 group-open:rotate-180" />
           </summary>
-          <p className="px-5 pb-5 text-sm leading-relaxed text-ink-soft">{f.a}</p>
+          <p className="max-w-xl pb-5 text-[15px] leading-relaxed text-ink-soft">{f.a}</p>
         </details>
       ))}
     </div>
@@ -163,15 +168,16 @@ function Faqs() {
 
 function FinalCta({ title = 'Bring your ajo records into one place.', text = 'Create your first group in a few minutes. Members join with a link.' }: { title?: string; text?: string }) {
   return (
-    <section className="bg-brand">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-14 sm:px-6 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">{title}</h2>
-          <p className="mt-2 text-white/75">{text}</p>
+    <section className="bg-brand text-paper">
+      <div className="frame flex flex-col gap-8 py-20 sm:py-28 md:flex-row md:items-end md:justify-between lg:border-white/10">
+        <div className="max-w-2xl">
+          <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.08em] text-lime">Get started</p>
+          <h2 className="text-3xl font-light leading-[1.05] tracking-[-0.04em] sm:text-5xl">{title}</h2>
+          <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-[#a9a796]">{text}</p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Link to="/register" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-mint px-6 text-sm font-semibold text-brand hover:bg-white">Get Started<ArrowRight aria-hidden className="size-4" /></Link>
-          <Link to="/how-it-works" className="inline-flex min-h-12 items-center justify-center rounded-lg border border-white/30 px-6 text-sm font-semibold text-white hover:bg-white/10">See how it works</Link>
+        <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
+          <Link to="/register" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-lime px-5 text-[15px] font-medium text-ink transition-[background-color,transform] duration-150 hover:bg-lime-hover active:scale-[0.98]">Get started<ArrowRight aria-hidden className="size-4" /></Link>
+          <Link to="/how-it-works" className="inline-flex min-h-11 items-center justify-center rounded-lg px-5 text-[15px] font-medium text-[#a9a796] transition-colors hover:bg-white/10 hover:text-paper">See how it works</Link>
         </div>
       </div>
     </section>
@@ -188,23 +194,23 @@ function ProductPreview() {
   ]
   return (
     <figure className="relative mx-auto w-full max-w-md lg:max-w-none" aria-label="Example of a group page, with demo data">
-      <div aria-hidden className="absolute -inset-4 -z-10 rounded-[2rem] bg-gradient-to-br from-teal-soft via-paper to-brand-soft" />
+      <div className="rounded-[1.25rem] border border-line bg-subtle p-2 sm:p-3">
       <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-card shadow-[var(--shadow-raised)]">
         <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">Market Women Monthly Ajo</p>
             <p className="text-xs text-ink-soft">Rotating ajo · ₦20,000 monthly</p>
           </div>
-          <span className="shrink-0 rounded-full bg-amber/15 px-2 py-0.5 text-[11px] font-semibold text-tone-warn">Demo data</span>
+          <span className="shrink-0 rounded-sm bg-subtle px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-soft">Demo data</span>
         </div>
         <div className="grid grid-cols-3 divide-x divide-line border-b border-line text-center">
           {[['Round', '4 of 10'], ['Members', '10'], ['Next due', '5 Dec']].map(([k, v]) => (
-            <div key={k} className="px-2 py-3"><p className="text-[11px] uppercase tracking-wide text-ink-soft">{k}</p><p className="mt-0.5 text-sm font-semibold tabular-nums">{v}</p></div>
+            <div key={k} className="px-2 py-3"><p className="font-mono text-[10px] uppercase tracking-[0.08em] text-ink-soft">{k}</p><p className="mt-0.5 text-sm font-semibold tabular-nums">{v}</p></div>
           ))}
         </div>
         <div className="px-4 pt-3">
           <div className="flex justify-between text-xs text-ink-soft"><span>Round 4 recorded</span><span className="tabular-nums">₦140,000 of ₦200,000</span></div>
-          <div className="mt-1.5 h-2 rounded-full bg-paper"><div className="h-2 w-[70%] rounded-full bg-teal" /></div>
+          <div className="mt-1.5 h-2 rounded-full bg-subtle"><div className="h-2 w-[70%] rounded-full bg-lime" /></div>
         </div>
         <ul className="divide-y divide-line px-4 py-2">
           {rows.map((r) => (
@@ -217,6 +223,7 @@ function ProductPreview() {
             </li>
           ))}
         </ul>
+      </div>
       </div>
       <figcaption className="sr-only">Example group page showing contribution statuses for round 4. All names and amounts are demo data.</figcaption>
     </figure>
@@ -232,29 +239,31 @@ export function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="overflow-hidden bg-card">
-        <div className="mx-auto grid max-w-6xl gap-12 px-4 pb-14 pt-10 sm:px-6 sm:pt-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-16 lg:pb-24">
+      <section className="relative overflow-hidden">
+        <div className="frame grid items-center gap-14 pb-20 pt-14 sm:pt-20 lg:grid-cols-[1.05fr_1fr] lg:gap-10 lg:pb-28 lg:pt-24">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-3 py-1 text-xs font-semibold text-ink-soft">
-              <span aria-hidden className="size-1.5 rounded-full bg-mint" />Built for ajo, esusu and adashe groups
-            </p>
-            <h1 className="mt-5 text-4xl font-semibold leading-[1.1] tracking-tight text-balance sm:text-5xl">{brand.tagline}</h1>
-            <p className="mt-5 max-w-xl text-lg leading-relaxed text-ink-soft">
+            <p className="eyebrow mb-5">For ajo, esusu and adashe groups</p>
+            <h1 className="display text-5xl sm:text-6xl lg:text-7xl">Your ajo group, <span className="hl">organized.</span></h1>
+            <p className="mt-6 max-w-md text-lg leading-relaxed text-ink-soft">
               Set up your groups, keep a clear record of every contribution, share the schedule with members and keep everyone informed — without the notebook and the endless WhatsApp messages.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link to="/register" className={`${ctaPrimary} min-h-12 px-6`}>Start managing your ajo<ArrowRight aria-hidden className="size-4" /></Link>
-              <Link to="/how-it-works" className={`${ctaSecondary} min-h-12 px-6`}>See how it works</Link>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Link to="/register" className={ctaPrimary}>Start managing your ajo<ArrowRight aria-hidden className="size-4" /></Link>
+              <Link to="/how-it-works" className={ctaSecondary}>See how it works</Link>
             </div>
-            <p className="mt-5 flex items-center gap-2 text-sm text-ink-soft"><ShieldCheck aria-hidden className="size-4 text-teal" />We keep the records. Your money stays with your group.</p>
+            <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-[13px] text-ink-soft">
+              {['We never hold your money', 'Members confirm their records', 'Works on any phone'].map((t) => (
+                <li key={t} className="flex items-center gap-1.5"><Check aria-hidden className="size-3.5 text-teal" strokeWidth={2.25} />{t}</li>
+              ))}
+            </ul>
           </div>
           <ProductPreview />
         </div>
       </section>
 
       {/* Value strip */}
-      <section aria-label="Why organizers use it" className="border-y border-line bg-paper">
-        <ul className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:grid-cols-3 sm:px-6">
+      <section aria-label="Why organizers use it" className="border-t border-line bg-card">
+        <ul className="frame grid gap-8 py-10 sm:grid-cols-3">
           {[
             [BookOpenCheck, 'Organized records', 'Every contribution and payout in one ledger.'],
             [CalendarClock, 'Transparent schedules', 'The same dates and payout order for every member.'],
@@ -263,8 +272,8 @@ export function HomePage() {
             const I = Icon as LucideIcon
             return (
               <li key={t as string} className="flex gap-3">
-                <I aria-hidden className="mt-0.5 size-5 shrink-0 text-teal" />
-                <div><p className="font-semibold">{t as string}</p><p className="text-sm text-ink-soft">{d as string}</p></div>
+                <I aria-hidden className="mt-0.5 size-5 shrink-0 text-teal" strokeWidth={1.75} />
+                <div><p className="text-[15px] font-medium">{t as string}</p><p className="text-sm text-ink-soft">{d as string}</p></div>
               </li>
             )
           })}
@@ -282,7 +291,7 @@ export function HomePage() {
       </Section>
       <Section id="organizers" eyebrow="For organizers" title="Spend less time on bookkeeping" tone="canvas">
         <OrganizerBenefits />
-        <Link to="/organizers" className="mt-6 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-teal hover:text-teal-dark">More for organizers<ArrowRight aria-hidden className="size-4" /></Link>
+        <Link to="/organizers" className="mt-8 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">More for organizers<ArrowRight aria-hidden className="size-4" /></Link>
       </Section>
       <Section id="transparency" eyebrow="Transparency" title="Clear about what a record means" intro="Every record shows exactly what is known about it, in words and with an icon, not just a colour.">
         <Transparency />
@@ -314,9 +323,9 @@ function PricingBody({ compact }: { compact?: boolean }) {
     return (
       <ul className="grid gap-4 md:grid-cols-3">
         {p.plans.map((plan) => (
-          <li key={plan.name} className="rounded-[var(--radius-card)] border border-line bg-card p-6 shadow-[var(--shadow-card)]">
-            <h3 className="font-semibold">{plan.name}</h3>
-            <p className="mt-2 text-3xl font-semibold tabular-nums">{plan.price}</p>
+          <li key={plan.name} className="rounded-[var(--radius-card)] border border-line bg-card p-6">
+            <h3 className="font-medium tracking-[-0.01em]">{plan.name}</h3>
+            <p className="mt-2 text-4xl font-light tabular-nums tracking-[-0.04em]">{plan.price}</p>
             <p className="mt-2 text-sm text-ink-soft">{plan.description}</p>
             <ul className="mt-4 space-y-2">{plan.features.map((f) => <li key={f} className="flex gap-2 text-sm"><CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-teal" />{f}</li>)}</ul>
           </li>
@@ -325,7 +334,7 @@ function PricingBody({ compact }: { compact?: boolean }) {
     )
   }
   return (
-    <div className="max-w-2xl rounded-[var(--radius-card)] border border-line bg-card p-6 shadow-[var(--shadow-card)]">
+    <div className="max-w-2xl rounded-[var(--radius-card)] border border-line bg-card p-6">
       <p className="text-ink-soft">{p.note}</p>
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <Link to="/register" className={ctaPrimary}>Create an account</Link>
@@ -337,11 +346,11 @@ function PricingBody({ compact }: { compact?: boolean }) {
 
 function PageHero({ eyebrow, title, intro }: { eyebrow: string; title: string; intro: string }) {
   return (
-    <section className="border-b border-line bg-paper">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
-        <p className="text-xs font-semibold uppercase tracking-wider text-teal">{eyebrow}</p>
-        <h1 className="mt-2 max-w-3xl text-3xl font-semibold tracking-tight text-balance sm:text-4xl">{title}</h1>
-        <p className="mt-4 max-w-2xl text-lg text-ink-soft">{intro}</p>
+    <section>
+      <div className="frame py-16 sm:py-24">
+        <p className="eyebrow mb-5">{eyebrow}</p>
+        <h1 className="display max-w-3xl text-4xl sm:text-6xl">{title}</h1>
+        <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-soft">{intro}</p>
       </div>
     </section>
   )
@@ -421,8 +430,8 @@ export function AboutPage() {
 
 function ListCard({ icon: Icon, title, items }: { icon: LucideIcon; title: string; items: string[] }) {
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-card p-6 shadow-[var(--shadow-card)]">
-      <h3 className="font-semibold">{title}</h3>
+    <div className="rounded-[var(--radius-card)] border border-line bg-card p-6">
+      <h3 className="font-medium tracking-[-0.01em]">{title}</h3>
       <ul className="mt-3 space-y-2">{items.map((i) => <li key={i} className="flex gap-2.5 text-sm text-ink-soft"><Icon aria-hidden className="mt-0.5 size-4 shrink-0 text-teal" />{i}</li>)}</ul>
     </div>
   )
@@ -435,17 +444,17 @@ export function ContactPage() {
       <PageHero eyebrow="Contact" title="Get in touch" intro="Questions about the product, pricing or a group you belong to." />
       <Section title="How to reach us">
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-[var(--radius-card)] border border-line bg-card p-6 shadow-[var(--shadow-card)]">
+          <div className="rounded-[var(--radius-card)] border border-line bg-card p-6">
             <Mail aria-hidden className="size-6 text-teal" />
-            <h3 className="mt-3 font-semibold">Email</h3>
+            <h3 className="mt-3 font-medium tracking-[-0.01em]">Email</h3>
             <p className="mt-1 text-sm text-ink-soft">We reply on working days.</p>
-            <a href={`mailto:${brand.supportEmail}`} className="mt-3 inline-flex min-h-11 items-center font-semibold text-teal underline-offset-4 hover:underline">{brand.supportEmail}</a>
+            <a href={`mailto:${brand.supportEmail}`} className="mt-3 inline-flex min-h-11 items-center font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">{brand.supportEmail}</a>
           </div>
-          <div className="rounded-[var(--radius-card)] border border-line bg-card p-6 shadow-[var(--shadow-card)]">
+          <div className="rounded-[var(--radius-card)] border border-line bg-card p-6">
             <Users aria-hidden className="size-6 text-teal" />
-            <h3 className="mt-3 font-semibold">About a record in your group</h3>
+            <h3 className="mt-3 font-medium tracking-[-0.01em]">About a record in your group</h3>
             <p className="mt-1 text-sm text-ink-soft">If a contribution or payout record looks wrong, raise a dispute on that record in the app. It reaches your organizer and is kept in the group’s history.</p>
-            <Link to="/login" className="mt-3 inline-flex min-h-11 items-center font-semibold text-teal underline-offset-4 hover:underline">Log in to your group</Link>
+            <Link to="/login" className="mt-3 inline-flex min-h-11 items-center font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">Log in to your group</Link>
           </div>
         </div>
         <p className="mt-6 text-sm text-ink-soft">Never send passwords, verification codes, BVN or card details by email. We will never ask for them.</p>
@@ -495,10 +504,10 @@ export function LegalPage({ kind }: { kind: LegalKind }) {
   const doc = legal[kind]
   usePageMeta(doc.title, doc.intro)
   return (
-    <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+    <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-24">
       <FileText aria-hidden className="size-8 text-teal" />
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight">{doc.title}</h1>
-      <p className="mt-2 text-lg text-ink-soft">{doc.intro}</p>
+      <h1 className="display mt-4 text-4xl sm:text-5xl">{doc.title}</h1>
+      <p className="mt-4 text-lg text-ink-soft">{doc.intro}</p>
       {!brand.legalReviewed && (
         <div className="mt-6"><Alert tone="warn" title="Draft — pending legal review">
           This text is a placeholder. It must be reviewed by qualified Nigerian legal counsel, including for Nigeria Data Protection Act requirements, before a public launch.
@@ -507,7 +516,7 @@ export function LegalPage({ kind }: { kind: LegalKind }) {
       <ul className="mt-8 space-y-4">
         {doc.points.map((p) => <li key={p} className="flex gap-3 leading-relaxed"><CheckCircle2 aria-hidden className="mt-1 size-4 shrink-0 text-teal" />{p}</li>)}
       </ul>
-      <p className="mt-10 text-sm text-ink-soft">Questions? Email <a href={`mailto:${brand.supportEmail}`} className="font-semibold text-teal underline-offset-4 hover:underline">{brand.supportEmail}</a>.</p>
+      <p className="mt-10 text-sm text-ink-soft">Questions? Email <a href={`mailto:${brand.supportEmail}`} className="font-medium text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink">{brand.supportEmail}</a>.</p>
     </article>
   )
 }
@@ -520,8 +529,8 @@ export function SystemMessage({ code, title, text, action }: { code: string; tit
   usePageMeta(title)
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center px-4 py-20 text-center">
-      <p className="text-sm font-semibold tabular-nums text-teal">{code}</p>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1>
+      <p className="eyebrow">Error {code}</p>
+      <h1 className="display mt-4 text-4xl sm:text-5xl">{title}</h1>
       <p className="mt-3 text-ink-soft">{text}</p>
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         {action ?? <Link to="/" className={ctaPrimary}>Go to the home page</Link>}

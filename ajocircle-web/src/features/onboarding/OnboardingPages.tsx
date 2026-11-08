@@ -16,12 +16,12 @@ function Checklist({ steps }: { steps: Step[] }) {
   return (
     <ol className="space-y-3">
       {steps.map((s, i) => (
-        <li key={s.title} className={`flex gap-4 rounded-[var(--radius-card)] border bg-card p-4 shadow-[var(--shadow-card)] sm:p-5 ${s.done ? 'border-line' : 'border-teal/40'}`}>
-          <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-full ${s.done ? 'bg-teal text-white' : 'bg-teal-soft text-teal'}`}>
+        <li key={s.title} className={`flex gap-4 rounded-[var(--radius-card)] border bg-card p-4 sm:p-5 ${s.done ? 'border-line' : 'border-teal/40'}`}>
+          <span aria-hidden className={`grid size-10 shrink-0 place-items-center rounded-full ${s.done ? 'bg-lime text-ink' : 'bg-teal-soft text-teal'}`}>
             {s.done ? <CheckCircle2 className="size-5" /> : <s.icon className="size-5" />}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Step {i + 1}{s.done ? ' · done' : ''}</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-soft">Step {i + 1}{s.done ? ' · done' : ''}</p>
             <h2 className="mt-0.5 font-semibold">{s.title}</h2>
             <p className="mt-1 text-sm text-ink-soft">{s.text}</p>
             {!s.done && s.action && <div className="mt-3">{s.action}</div>}
@@ -47,8 +47,8 @@ function Shell({ eyebrow, title, intro, children, me }: { eyebrow: string; title
   return (
     <div className="bg-paper">
       <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 sm:py-14">
-        <p className="text-xs font-semibold uppercase tracking-wider text-teal">{eyebrow}</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">{title}</h1>
+        <p className="eyebrow">{eyebrow}</p>
+        <h1 className="display mt-4 text-4xl sm:text-5xl">{title}</h1>
         <p className="mt-2 text-ink-soft">{intro}</p>
         <div className="mt-8">{children}</div>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">

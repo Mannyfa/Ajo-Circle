@@ -5,8 +5,8 @@ import { ApiError } from '../lib/api'
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand text-white shadow-sm hover:bg-brand-dark disabled:bg-brand/45',
-  secondary: 'bg-card text-ink border border-line-strong shadow-sm hover:bg-paper disabled:text-ink-soft',
+  primary: 'bg-lime text-ink hover:bg-lime-hover active:scale-[0.98] disabled:opacity-45',
+  secondary: 'bg-card text-ink border border-line-strong hover:bg-subtle disabled:text-ink-soft',
   danger: 'bg-card text-tone-danger border border-tone-danger/40 hover:bg-tone-danger-bg',
   ghost: 'text-ink-soft hover:text-ink hover:bg-ink/5',
 }
@@ -19,7 +19,7 @@ export function Button({ variant = 'primary', busy, className = '', children, di
       {...rest}
       disabled={disabled || busy}
       aria-busy={busy || undefined}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors duration-150 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-control)] px-4 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-150 ease-out-soft disabled:cursor-not-allowed ${variants[variant]} ${className}`}
     >
       {busy && <Spinner small />}
       {children}
@@ -29,7 +29,7 @@ export function Button({ variant = 'primary', busy, className = '', children, di
 
 /** `flush` drops the inner padding for cards that hold full-width lists or tables. */
 export function Card({ children, className = '', flush }: { children: ReactNode; className?: string; flush?: boolean }) {
-  return <div className={`rounded-[var(--radius-card)] border border-line bg-card shadow-[var(--shadow-card)] ${flush ? 'overflow-hidden' : 'p-4 sm:p-5'} ${className}`}>{children}</div>
+  return <div className={`rounded-[var(--radius-card)] border border-line bg-card ${flush ? 'overflow-hidden' : 'p-4 sm:p-5'} ${className}`}>{children}</div>
 }
 
 /** Section heading inside a card: title plus optional description and actions. */
@@ -37,7 +37,7 @@ export function CardHeader({ title, description, actions }: { title: ReactNode; 
   return (
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+        <h2 className="text-[15px] font-medium tracking-[-0.01em]">{title}</h2>
         {description && <p className="mt-0.5 text-sm text-ink-soft">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -60,7 +60,7 @@ export function Field({ label, hint, error, children }: { label: string; hint?: 
   )
 }
 
-const inputCls = 'block w-full min-h-11 rounded-lg border border-line-strong bg-card px-3 py-2 text-base text-ink shadow-sm placeholder:text-ink-soft/60 transition-colors focus:border-teal focus:outline-none focus:ring-2 focus:ring-teal/15 aria-[invalid=true]:border-tone-danger'
+const inputCls = 'block w-full min-h-11 rounded-lg border border-line-strong bg-card px-3 py-2 text-base text-ink placeholder:text-ink-faint transition-colors focus:border-ink/50 focus:outline-none focus:ring-2 focus:ring-ink/10 aria-[invalid=true]:border-tone-danger'
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${inputCls} ${props.className ?? ''}`} />
@@ -136,8 +136,8 @@ export function ErrorAlert({ error }: { error: unknown }) {
 export function EmptyState({ title, children, action, icon: Icon = Inbox }: { title: string; children?: ReactNode; action?: ReactNode; icon?: typeof Inbox }) {
   return (
     <div className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-card px-6 py-10 text-center">
-      <span className="mx-auto mb-3 grid size-10 place-items-center rounded-full bg-paper text-ink-soft"><Icon aria-hidden className="size-5" /></span>
-      <p className="font-semibold">{title}</p>
+      <span className="mx-auto mb-3 grid size-10 place-items-center rounded-[10px] bg-subtle text-ink-soft"><Icon aria-hidden className="size-5" /></span>
+      <p className="font-medium">{title}</p>
       {children && <div className="mx-auto mt-1 max-w-sm text-sm text-ink-soft">{children}</div>}
       {action && <div className="mt-4">{action}</div>}
     </div>
@@ -147,9 +147,9 @@ export function EmptyState({ title, children, action, icon: Icon = Inbox }: { ti
 /** A labelled figure. Money and counts use tabular numerals so columns line up. */
 export function Stat({ label, value, note }: { label: string; value: ReactNode; note?: string }) {
   return (
-    <div className="rounded-lg border border-line bg-card px-3 py-3">
-      <dt className="text-xs font-medium uppercase tracking-wide text-ink-soft">{label}</dt>
-      <dd className="mt-1 text-lg font-semibold tabular-nums tracking-tight">{value}</dd>
+    <div className="rounded-[var(--radius-card)] border border-line bg-card px-4 py-3.5">
+      <dt className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-soft">{label}</dt>
+      <dd className="mt-1.5 text-xl font-medium tabular-nums tracking-[-0.02em]">{value}</dd>
       {note && <dd className="text-xs text-ink-soft">{note}</dd>}
     </div>
   )

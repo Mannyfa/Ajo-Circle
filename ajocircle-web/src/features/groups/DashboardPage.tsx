@@ -12,7 +12,7 @@ import type { DisputeSummary, GroupListItem, GroupStatus, SchemeType } from '../
 import { schemeLabel } from '../schemes/labels'
 import { wsPath } from '../../lib/workspace'
 
-const primaryLink = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark'
+const primaryLink = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-lime px-4 text-sm font-medium text-ink hover:bg-lime-hover'
 const shortDate = (iso: string) => formatDate(iso).replace(/^\w+, /, '')
 
 function useGroups() {
@@ -122,12 +122,12 @@ function AttentionList({ items }: { items: { key: string; icon: LucideIcon; to: 
 
 function MetricCard({ icon: Icon, label, value, note, tone }: { icon: LucideIcon; label: string; value: ReactNode; note?: string; tone?: 'warn' }) {
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-card p-4 shadow-[var(--shadow-card)]">
+    <div className="rounded-[var(--radius-card)] border border-line bg-card p-4">
       <div className="flex items-start justify-between gap-2">
         <dt className="text-xs font-medium text-ink-soft sm:text-sm">{label}</dt>
         <Icon aria-hidden className={`size-4 shrink-0 ${tone === 'warn' ? 'text-amber' : 'text-teal'}`} />
       </div>
-      <dd className={`mt-2 text-2xl font-semibold tabular-nums tracking-tight ${tone === 'warn' ? 'text-tone-warn' : ''}`}>{value}</dd>
+      <dd className={`mt-2 text-[28px] font-light tabular-nums tracking-[-0.035em] ${tone === 'warn' ? 'text-tone-warn' : ''}`}>{value}</dd>
       {note && <dd className="mt-0.5 text-xs text-ink-soft">{note}</dd>}
     </div>
   )
@@ -234,7 +234,7 @@ function GroupCard({ g }: { g: GroupListItem }) {
   const fill = Math.min(100, Math.round((g.memberCount / Math.max(1, g.capacity)) * 100))
   return (
     <Link to={wsPath(`/app/groups/${g.id}`)}
-      className="group flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-card p-4 shadow-[var(--shadow-card)] transition-[border-color,box-shadow] hover:border-teal/40 hover:shadow-[var(--shadow-raised)]">
+      className="group flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-card p-4 transition-[border-color,box-shadow] hover:border-teal/40 hover:shadow-[var(--shadow-raised)]">
       <div className="flex items-start gap-3">
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg bg-teal-soft text-teal"><Icon className="size-5" /></span>
         <div className="min-w-0 flex-1">

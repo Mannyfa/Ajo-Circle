@@ -29,8 +29,8 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: st
         <div aria-hidden className="absolute -right-24 -top-24 size-80 rounded-full border-[28px] border-white/5" />
         <div aria-hidden className="absolute -bottom-32 -left-16 size-96 rounded-full border-[36px] border-mint/10" />
         <div className="relative max-w-md">
-          <p className="text-xs font-semibold uppercase tracking-wider text-mint">{brand.name}</p>
-          <p className="mt-4 text-3xl font-semibold leading-tight tracking-tight">{brand.tagline}</p>
+          <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-lime">{brand.name}</p>
+          <p className="mt-5 text-4xl font-light leading-[1.05] tracking-[-0.04em]">{brand.tagline}</p>
           <ul className="mt-8 space-y-3 text-sm text-white/80">
             {['Every member sees the same rules and dates.', 'Records are permanent; corrections are linked, never overwritten.', 'Tracking only — your money stays with your group.'].map((t) => (
               <li key={t} className="flex gap-2.5"><CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-mint" />{t}</li>
@@ -41,8 +41,8 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle?: st
       </aside>
       <div className="flex items-start justify-center bg-paper px-4 py-10 sm:items-center sm:py-14">
         <div className="w-full max-w-md">
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-ink-soft">{subtitle}</p>}
+          <h1 className="text-[32px] font-light leading-[1.1] tracking-[-0.035em]">{title}</h1>
+          {subtitle && <p className="mt-3 text-[15px] text-ink-soft">{subtitle}</p>}
           <Card className="mt-6 sm:p-6">{children}</Card>
         </div>
       </div>

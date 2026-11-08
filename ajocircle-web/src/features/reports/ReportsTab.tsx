@@ -50,12 +50,12 @@ export function GroupReportsTab() {
       </Card>
 
       <section aria-label="Reports">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-soft">Reports and exports</h2>
+        <h2 className="mb-3 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-soft">Reports and exports</h2>
         <ul className="grid gap-3 md:grid-cols-2">
           {s.available.map((k) => {
             const c = catalog[k]
             return (
-              <li key={k} className="flex flex-col rounded-[var(--radius-card)] border border-line bg-card p-4 shadow-[var(--shadow-card)]">
+              <li key={k} className="flex flex-col rounded-[var(--radius-card)] border border-line bg-card p-4">
                 <div className="flex gap-3">
                   <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg bg-teal-soft text-teal"><c.icon className="size-5" /></span>
                   <div className="min-w-0">
@@ -88,7 +88,7 @@ function Figure({ label, value, note, tone }: { label: string; value: string; no
   const color = tone === 'warn' ? 'text-tone-warn' : tone === 'danger' ? 'text-tone-danger' : 'text-ink'
   return (
     <div className="rounded-lg border border-line px-3 py-3">
-      <dt className="text-xs font-medium uppercase tracking-wide text-ink-soft">{label}</dt>
+      <dt className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-soft">{label}</dt>
       <dd className={`mt-1 text-lg font-semibold tabular-nums tracking-tight ${color}`}>{value}</dd>
       {note && <dd className="text-xs text-ink-soft">{note}</dd>}
     </div>
@@ -111,7 +111,7 @@ function ReportPreview({ groupId, kind }: { groupId: string; kind: ReportKind })
       {q.data && q.data.rows.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
-            <thead className="bg-paper text-left text-xs font-semibold uppercase tracking-wide text-ink-soft">
+            <thead className="bg-paper text-left font-mono text-[11px] uppercase tracking-[0.08em] text-ink-soft">
               <tr>{q.data.columns.map((c) => <th key={c} scope="col" className={`whitespace-nowrap px-4 py-2.5 ${c.includes("(NGN)") ? "text-right" : ""}`}>{c}</th>)}</tr>
             </thead>
             <tbody className="divide-y divide-line">

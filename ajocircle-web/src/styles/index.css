@@ -1,61 +1,88 @@
 @import "tailwindcss";
 
 /*
- * Design tokens — brand guide from the Product & UI Engineering Specification §4:
- * Midnight Navy primary, Deep Teal secondary, Mint Teal accent, Cloud White canvas, Slate muted text, amber for warnings only.
- * "AjoCircle" is a working name: change the palette here and the name in src/app/brand.ts — nothing else hard-codes branding.
- * Text/background pairs meet WCAG AA (4.5:1). Mint (#14B8A6) is decorative only — it is too light for text on white.
+ * Design tokens — warm editorial look: paper-toned canvas, near-black ink, a lime highlight,
+ * hairline borders instead of heavy shadows, light-weight display type and mono eyebrows.
+ * "AjoCircle" is a working name: change the palette here and the name in src/app/brand.ts.
+ * Text/background pairs meet WCAG AA (4.5:1). Lime is a fill only — never text on a light background;
+ * text on lime is always ink.
  */
 @theme {
-  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 
   /* Neutrals */
-  --color-ink: #102a43;          /* Midnight Navy — headings and body text, 14.6:1 on white */
-  --color-ink-soft: #64748b;     /* Slate — muted text, 4.76:1 on white, 4.55:1 on canvas */
-  --color-paper: #f8fafc;        /* Cloud White — app canvas */
-  --color-card: #ffffff;
-  --color-line: #e2e8f0;
-  --color-line-strong: #cbd5e1;
+  --color-ink: #16160f;          /* body and headings, 16:1 on canvas */
+  --color-ink-soft: #5a5949;     /* muted text, 6.3:1 on canvas */
+  --color-ink-faint: #75735f;    /* fine print only, 4.5:1 on surface */
+  --color-paper: #f2f1ea;        /* canvas */
+  --color-card: #fbfaf5;         /* raised surface */
+  --color-subtle: #e9e7dd;       /* wells, inactive chips */
+  --color-line: #e0ddd1;
+  --color-line-strong: #ccc8b8;
 
-  /* Brand */
-  --color-brand: #102a43;        /* Midnight Navy — primary actions, wordmark */
-  --color-brand-dark: #0a1c2e;
-  --color-brand-soft: #eaf0f6;
-  --color-teal: #0f766e;         /* Deep Teal — links, active navigation, secondary emphasis (5.5:1 on white) */
-  --color-teal-dark: #0b5c55;
-  --color-teal-soft: #e7f5f3;
-  --color-mint: #14b8a6;         /* Mint Teal — decorative accents only (bars, dots, rings) */
-  --color-amber: #f59e0b;        /* Attention — borders and icons on warnings only */
+  /* Dark surfaces (sidebar, footer, selected segments, your own chat bubbles) */
+  --color-brand: #181813;
+  --color-brand-dark: #0d0d09;
+  --color-brand-soft: #e9e7dd;
 
-  /* Status tones. Text colours are darkened for contrast; green is reserved for provider-verified money. */
-  --color-tone-neutral: #475569;
-  --color-tone-neutral-bg: #f1f5f9;
-  --color-tone-info: #0f5f8a;
-  --color-tone-info-bg: #ecf6fc;
-  --color-tone-warn: #92400e;
-  --color-tone-warn-bg: #fffbeb;
-  --color-tone-danger: #b42318;
-  --color-tone-danger-bg: #fef3f2;
-  --color-tone-verified: #146c43;
-  --color-tone-verified-bg: #e8f5ee;
+  /* Lime highlight — primary actions and highlighted words, always with ink text */
+  --color-lime: #d4f24a;
+  --color-lime-hover: #c8e834;
 
-  /* Shape and elevation */
-  --radius-card: 0.75rem;
+  /* Olive accent — links, eyebrows, active navigation (6.1:1 on canvas) */
+  --color-teal: #4f5e0d;
+  --color-teal-dark: #3d4908;
+  --color-teal-soft: #eaf3c4;
+  --color-mint: #d4f24a;         /* decorative accents on dark surfaces */
+  --color-amber: #d97706;
+
+  /* Status tones */
+  --color-tone-neutral: #5a5949;
+  --color-tone-neutral-bg: #e9e7dd;
+  --color-tone-info: #1f5f86;
+  --color-tone-info-bg: #e6f0f4;
+  --color-tone-warn: #8a3d0b;
+  --color-tone-warn-bg: #faf0dc;
+  --color-tone-danger: #b0302a;
+  --color-tone-danger-bg: #f8e7e3;
+  --color-tone-verified: #2f6b36;
+  --color-tone-verified-bg: #e3efd9;
+
+  /* Shape and elevation — flat, bordered */
+  --radius-card: 0.875rem;
   --radius-control: 0.5rem;
-  --shadow-card: 0 1px 2px 0 rgb(16 42 67 / 0.04), 0 1px 3px 0 rgb(16 42 67 / 0.06);
-  --shadow-raised: 0 4px 6px -1px rgb(16 42 67 / 0.06), 0 10px 24px -6px rgb(16 42 67 / 0.12);
-  --shadow-overlay: 0 24px 48px -12px rgb(16 42 67 / 0.28);
+  --shadow-card: none;
+  --shadow-raised: 0 1px 0 0 rgb(22 22 15 / 0.04), 0 12px 32px -16px rgb(22 22 15 / 0.18);
+  --shadow-overlay: 0 24px 64px -16px rgb(22 22 15 / 0.35);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; font-feature-settings: "cv11", "ss01"; scroll-padding-top: 5rem; }
+  html { -webkit-text-size-adjust: 100%; scroll-padding-top: 5rem; }
   body { @apply bg-paper text-ink antialiased; }
+  h1, h2, h3 { text-wrap: balance; }
+  p { text-wrap: pretty; }
   /* Money and counts line up in columns. */
   .tabular-nums, table { font-variant-numeric: tabular-nums; }
   :focus-visible { outline: 2px solid var(--color-teal); outline-offset: 2px; }
+  ::selection { background: var(--color-lime); color: var(--color-ink); }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
   @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+}
+
+@layer components {
+  /* Small mono label above a heading. */
+  .eyebrow { @apply font-mono text-[11px] uppercase tracking-[0.08em] text-teal; }
+  /* Word highlighted with a lime block, as in "get you <mark>paid.</mark>" */
+  .hl { @apply inline-block rounded-[0.12em] bg-lime px-[0.1em] pb-[0.12em] pt-[0.02em] leading-[0.9] text-ink; }
+  /* Display headings: light weight, tight tracking. */
+  .display { @apply font-light leading-[1.04] tracking-[-0.045em] text-ink; }
+  .section-title { @apply text-3xl font-light leading-[1.08] tracking-[-0.035em] sm:text-[44px]; }
+  /* Bordered content column used by the public site. */
+  .frame { @apply mx-auto max-w-6xl px-4 sm:px-6 lg:border-x lg:border-line lg:px-10; }
 }

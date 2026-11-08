@@ -71,10 +71,10 @@ function Lifecycle({ status }: { status: GroupDetail['status'] }) {
   if (status === 'Cancelled' || status === 'Suspended') return null
   const idx = stages.findIndex(([s]) => s === status)
   return (
-    <ol className="mb-5 flex items-center rounded-[var(--radius-card)] border border-line bg-card px-3 py-3 shadow-[var(--shadow-card)] sm:px-5" aria-label="Group lifecycle">
+    <ol className="mb-5 flex items-center rounded-[var(--radius-card)] border border-line bg-card px-3 py-3 sm:px-5" aria-label="Group lifecycle">
       {stages.map(([s, label], i) => (
         <li key={s} aria-current={i === idx ? 'step' : undefined} className="flex flex-1 items-center gap-2 last:flex-none">
-          <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${i < idx ? 'bg-teal text-white' : i === idx ? 'bg-brand text-white ring-4 ring-mint/30' : 'bg-paper text-ink-soft ring-1 ring-line-strong'}`}>
+          <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-bold ${i < idx ? 'bg-lime text-ink' : i === idx ? 'bg-brand text-white ring-4 ring-mint/30' : 'bg-paper text-ink-soft ring-1 ring-line-strong'}`}>
             {i < idx ? <Check aria-hidden className="size-3.5" strokeWidth={3} /> : i + 1}
           </span>
           <span className={`hidden text-xs font-semibold sm:inline ${i === idx ? 'text-ink' : 'text-ink-soft'}`}>{label}</span>
