@@ -12,6 +12,13 @@ public enum UserStatus { Active, Locked }
 /// </summary>
 public enum IdentityLevel { None, Member, Organizer }
 
+/// <summary>
+/// Which workspace an account uses (owner decision, 7 Nov 2026). Chosen at registration and enforced by the server.
+/// Organizers run groups and may also join other organizers' groups. A member becomes an organizer only when operations
+/// approves an organizer-level identity check — never by choosing it themselves.
+/// </summary>
+public enum AccountRole { Member, Organizer }
+
 public sealed class User
 {
     private User() { }
@@ -40,17 +47,24 @@ public sealed class User
     public void SetVerifiedPhone(string e164, DateTimeOffset now) { PhoneNumber = e164; PhoneVerifiedAt = now; }
 
     // ---- Identity ----
+    public AccountRole Role { get; private set; } = AccountRole.Member;
+    public bool IsOrganizer => Role == AccountRole.Organizer;
+
     public IdentityLevel IdentityLevel { get; private set; } = IdentityLevel.None;
     public DateTimeOffset? IdentityVerifiedAt { get; private set; }
 
     public bool HasIdentity(IdentityLevel needed) => IdentityLevel >= needed;
 
-    /// <summary>Only ever raises the level: approving a member check never downgrades a verified organizer.</summary>
+    /// <summary>
+    /// Only ever raises the level: approving a member check never downgrades a verified organizer. An approved
+    /// organizer-level check is how a member account becomes an organizer.
+    /// </summary>
     public void GrantIdentity(IdentityLevel level, DateTimeOffset now)
     {
         if (level <= IdentityLevel) return;
         IdentityLevel = level;
         IdentityVerifiedAt = now;
+        if (level == IdentityLevel.Organizer) Role = AccountRole.Organizer;
     }
 
     // ---- Operations staff (brief §3, §5.4) ----
@@ -81,7 +95,7 @@ public sealed class User
 
     public static string NormalizeEmail(string email) => (email ?? "").Trim().ToLowerInvariant();
 
-    public static User Register(string email, string displayName, bool acceptedTerms, DateTimeOffset now)
+    public static User Register(string email, string displayName, bool acceptedTerms, AccountRole? role, DateTimeOffset now)
     {
         var errors = new Dictionary<string, List<string>>();
         email = NormalizeEmail(email);
@@ -92,12 +106,14 @@ public sealed class User
             errors["displayName"] = ["Display name must be 2–60 characters."];
         if (!acceptedTerms)
             errors["acceptTerms"] = ["You must accept the Terms of Service and Privacy Notice."];
+        if (role is not (AccountRole.Member or AccountRole.Organizer))
+            errors["role"] = ["Choose whether you are joining as an organizer or a member."];
         DomainValidationException.ThrowIfAny(errors);
 
         return new User
         {
             Id = Guid.CreateVersion7(now), Email = email, DisplayName = displayName, Status = UserStatus.Active,
-            TermsAcceptedAt = now, SecurityStamp = NewStamp(), CreatedAt = now, EmailNotificationsEnabled = true,
+            TermsAcceptedAt = now, SecurityStamp = NewStamp(), Role = role!.Value, CreatedAt = now, EmailNotificationsEnabled = true,
         };
     }
 

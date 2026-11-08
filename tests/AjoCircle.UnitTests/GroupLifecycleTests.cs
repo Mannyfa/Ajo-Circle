@@ -215,9 +215,9 @@ public class InvitationAndIdentityTests
     [Fact]
     public void Registration_normalizes_email_and_requires_terms()
     {
-        var u = User.Register("  Ada@Example.COM ", "Ada", true, Now);
+        var u = User.Register("  Ada@Example.COM ", "Ada", true, AccountRole.Organizer, Now);
         Assert.Equal("ada@example.com", u.Email);
-        Assert.Throws<DomainValidationException>(() => User.Register("ada@example.com", "Ada", false, Now));
-        Assert.Throws<DomainValidationException>(() => User.Register("not-an-email", "Ada", true, Now));
+        Assert.Throws<DomainValidationException>(() => User.Register("ada@example.com", "Ada", false, AccountRole.Member, Now));
+        Assert.Throws<DomainValidationException>(() => User.Register("not-an-email", "Ada", true, AccountRole.Member, Now));
     }
 }

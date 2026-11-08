@@ -11,6 +11,8 @@ import { JoinPage } from '../features/members/JoinPage'
 import { DisputeDetailPage, DisputesPage } from '../features/disputes/DisputePages'
 import { ContributionDetailPage, PayoutDetailPage } from '../features/records/RecordPages'
 import { HelpPage } from '../features/help/HelpPage'
+import { MemberCannotCreatePage, MemberContributionsPage, MemberDashboardPage, MemberSchedulePage } from '../features/member/MemberPages'
+import { MemberOnboardingPage, OrganizerOnboardingPage } from '../features/onboarding/OnboardingPages'
 import {
   AboutPage, ContactPage, FeaturesPage, ForbiddenPage, HomePage, HowItWorksPage, LegalPage, NotFoundPage, OrganizersPage, PricingPage,
 } from '../pages/PublicPages'
@@ -20,6 +22,24 @@ import {
 const ops = () => import('../features/operations/OperationsPages')
 
 // URL map follows brief §5.5.
+const verification = () => import('../features/identity/VerificationPage').then((m) => ({ Component: m.VerificationPage }))
+
+/** Group pages are shared by both workspaces; what each person sees inside is decided by the API. */
+const groupRoutes = {
+  path: 'groups/:groupId',
+  element: <GroupLayout />,
+  children: [
+    { index: true, element: <GroupOverviewTab /> },
+    { path: 'members', element: <GroupMembersTab /> },
+    { path: 'payouts', element: <GroupPayoutsTab /> },
+    { path: 'payouts/:payoutId', element: <PayoutDetailPage /> },
+    { path: 'contributions', element: <GroupContributionsTab /> },
+    { path: 'contributions/:obligationId', element: <ContributionDetailPage /> },
+    { path: 'activity', element: <GroupActivityTab /> },
+    { path: 'reports', lazy: () => import('../features/reports/ReportsTab').then((m) => ({ Component: m.GroupReportsTab })) },
+  ],
+}
+
 // Route map follows the Product & UI Engineering Specification §17. Every route has the global error boundary.
 export const router = createBrowserRouter([
   {
@@ -44,6 +64,8 @@ export const router = createBrowserRouter([
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '/join/:token', element: <JoinPage /> },
+      { path: '/onboarding/organizer', element: <OrganizerOnboardingPage /> },
+      { path: '/onboarding/member', element: <MemberOnboardingPage /> },
       { path: '/403', element: <ForbiddenPage /> },
       { path: '/404', element: <NotFoundPage /> },
       { path: '*', element: <NotFoundPage /> },
@@ -62,22 +84,30 @@ export const router = createBrowserRouter([
       { path: 'disputes', element: <DisputesPage /> },
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'settings', element: <SettingsPage /> },
-      { path: 'verification', lazy: () => import('../features/identity/VerificationPage').then((m) => ({ Component: m.VerificationPage })) },
+      { path: 'verification', lazy: verification },
       { path: 'disputes/:disputeId', element: <DisputeDetailPage /> },
-      {
-        path: 'groups/:groupId',
-        element: <GroupLayout />,
-        children: [
-          { index: true, element: <GroupOverviewTab /> },
-          { path: 'members', element: <GroupMembersTab /> },
-          { path: 'payouts', element: <GroupPayoutsTab /> },
-          { path: 'payouts/:payoutId', element: <PayoutDetailPage /> },
-          { path: 'contributions', element: <GroupContributionsTab /> },
-          { path: 'contributions/:obligationId', element: <ContributionDetailPage /> },
-          { path: 'activity', element: <GroupActivityTab /> },
-          { path: 'reports', lazy: () => import('../features/reports/ReportsTab').then((m) => ({ Component: m.GroupReportsTab })) },
-        ],
-      },
+      groupRoutes,
+    ],
+  },
+  {
+    // Member workspace (spec §8). Members see only groups they've joined and their own records; the API enforces it.
+    path: '/member',
+    element: <AppLayout workspace="member" />,
+    errorElement: <RouteError />,
+    children: [
+      { index: true, element: <Navigate to="/member/dashboard" replace /> },
+      { path: 'dashboard', element: <MemberDashboardPage /> },
+      { path: 'groups', element: <GroupsPage /> },
+      { path: 'groups/new', element: <MemberCannotCreatePage /> },
+      { path: 'contributions', element: <MemberContributionsPage /> },
+      { path: 'schedule', element: <MemberSchedulePage /> },
+      { path: 'notifications', element: <NotificationsPage /> },
+      { path: 'disputes', element: <DisputesPage /> },
+      { path: 'disputes/:disputeId', element: <DisputeDetailPage /> },
+      { path: 'settings', element: <SettingsPage /> },
+      { path: 'help', element: <HelpPage /> },
+      { path: 'verification', lazy: verification },
+      groupRoutes,
     ],
   },
   {

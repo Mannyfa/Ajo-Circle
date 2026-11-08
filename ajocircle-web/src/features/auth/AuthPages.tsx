@@ -1,16 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Layers, Users } from 'lucide-react'
 import { brand } from '../../app/brand'
 import { usePageMeta } from '../../app/usePageMeta'
 import { Alert, Button, Card, ErrorAlert, Field, Loading, PasswordInput, TextInput } from '../../components/ui'
 import { meKey, useMe } from '../../hooks/useMe'
 import { api, ApiError } from '../../lib/api'
-import type { Me } from '../../types/api'
+import type { AccountRole, Me } from '../../types/api'
+import { homeFor } from '../../lib/workspace'
+
+const onboardingFor = (me: Me) => (me.role === 'Organizer' ? '/onboarding/organizer' : '/onboarding/member')
+
+/** `?next=` carried through sign-up and log-in, encoded for a URL (left off when there is none). */
+const withNext = (path: string, next: string) => (next ? `${path}?next=${encodeURIComponent(next)}` : path)
 
 /** Only allow in-app relative redirects (no open redirect). */
-function safeNext(raw: string | null, fallback = '/app/dashboard') {
+function safeNext(raw: string | null, fallback = '') {
   return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : fallback
 }
 
@@ -49,37 +55,95 @@ export function RegisterPage() {
   const next = safeNext(params.get('next'))
   const qc = useQueryClient()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ displayName: '', email: '', password: '', acceptTerms: false })
+  const preset = params.get('role')
+  const [step, setStep] = useState<1 | 2>(1)
+  const [form, setForm] = useState({
+    displayName: '', email: '', password: '', confirm: '', acceptTerms: false,
+    role: (preset === 'organizer' ? 'Organizer' : preset === 'member' ? 'Member' : null) as AccountRole | null,
+  })
+  const [local, setLocal] = useState<Record<string, string[]>>({})
   const m = useMutation({
-    mutationFn: () => api.post<Me>('/auth/register', form),
+    mutationFn: () => api.post<Me>('/auth/register', { displayName: form.displayName, email: form.email, password: form.password, acceptTerms: form.acceptTerms, role: form.role }),
     onSuccess: (me) => {
       qc.setQueryData(meKey, me)
-      navigate(`/verify-account?next=${encodeURIComponent(next)}`)
+      navigate(withNext('/verify-account', next))
     },
+    // A problem with the details sends the person back to step 1, where those fields are.
+    onError: (e) => { if (e instanceof ApiError && ['displayName', 'email', 'password', 'acceptTerms'].some((k) => e.fieldErrors[k])) setStep(1) },
   })
-  const fe = m.error instanceof ApiError ? m.error.fieldErrors : {}
+  const server = m.error instanceof ApiError ? m.error.fieldErrors : {}
+  const fe = (k: string) => local[k] ?? server[k]
+
+  /** Step 1 is checked in the browser for quick feedback; the server checks everything again. */
+  const toStep2 = (e: FormEvent) => {
+    e.preventDefault()
+    const errs: Record<string, string[]> = {}
+    if (form.displayName.trim().length < 2) errs.displayName = ['Enter your name (at least 2 characters).']
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = ['Enter a valid email address.']
+    if (form.password.length < 10) errs.password = ['Use at least 10 characters.']
+    if (form.confirm !== form.password) errs.confirm = ['The passwords don’t match.']
+    if (!form.acceptTerms) errs.acceptTerms = ['You must accept the Terms of Service and Privacy Notice.']
+    setLocal(errs)
+    if (Object.keys(errs).length === 0) setStep(2)
+  }
 
   return (
-    <AuthShell title="Create your account" subtitle={`Set up and track your ajo groups with ${brand.name}.`}>
-      <form className="space-y-4" onSubmit={(e: FormEvent) => { e.preventDefault(); m.mutate() }} noValidate>
-        <Field label="Your name" hint="Shown to members of your groups." error={fe.displayName}>
-          {(id, d) => <TextInput id={id} aria-describedby={d} autoComplete="name" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} required />}
-        </Field>
-        <Field label="Email" error={fe.email}>
-          {(id, d) => <TextInput id={id} aria-describedby={d} type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />}
-        </Field>
-        <Field label="Password" hint="At least 10 characters." error={fe.password}>
-          {(id, d) => <PasswordInput id={id} aria-describedby={d} autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
-        </Field>
-        <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" className="mt-1 size-4 accent-teal" checked={form.acceptTerms} onChange={(e) => setForm({ ...form, acceptTerms: e.target.checked })} />
-          <span>I accept the <Link to="/terms" className="font-semibold underline">Terms of Service</Link> and <Link to="/privacy" className="font-semibold underline">Privacy Notice</Link>.</span>
-        </label>
-        {fe.acceptTerms && <p className="text-xs font-medium text-tone-danger">{fe.acceptTerms[0]}</p>}
-        {m.error && !(m.error instanceof ApiError && m.error.status === 400) && <ErrorAlert error={m.error} />}
-        <Button type="submit" busy={m.isPending} className="w-full">Create account</Button>
-      </form>
-      <p className="mt-4 text-center text-sm text-ink-soft">Already have an account? <Link to={`/login?next=${encodeURIComponent(next)}`} className="font-semibold text-ink underline">Log in</Link></p>
+    <AuthShell title="Create your account" subtitle={`Step ${step} of 2 · ${step === 1 ? 'Your details' : `How you’ll use ${brand.name}`}`}>
+      <ol className="mb-5 grid grid-cols-2 gap-2" aria-label="Sign-up progress">
+        {[1, 2].map((n) => (
+          <li key={n} aria-current={step === n ? 'step' : undefined} className={`h-1.5 rounded-full ${n <= step ? 'bg-teal' : 'bg-line'}`}>
+            <span className="sr-only">Step {n}{n < step ? ' (done)' : ''}</span>
+          </li>
+        ))}
+      </ol>
+      {step === 1 ? (
+        <form className="space-y-4" onSubmit={toStep2} noValidate>
+          <Field label="Your name" hint="Shown to the people in your groups." error={fe('displayName')}>
+            {(id, d) => <TextInput id={id} aria-describedby={d} aria-invalid={!!fe('displayName')} autoComplete="name" value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} required />}
+          </Field>
+          <Field label="Email" error={fe('email')}>
+            {(id, d) => <TextInput id={id} aria-describedby={d} aria-invalid={!!fe('email')} type="email" autoComplete="email" inputMode="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />}
+          </Field>
+          <Field label="Password" hint="At least 10 characters. A short sentence is easy to remember." error={fe('password')}>
+            {(id, d) => <PasswordInput id={id} aria-describedby={d} aria-invalid={!!fe('password')} autoComplete="new-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />}
+          </Field>
+          <Field label="Confirm password" error={fe('confirm')}>
+            {(id, d) => <PasswordInput id={id} aria-describedby={d} aria-invalid={!!fe('confirm')} autoComplete="new-password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} required />}
+          </Field>
+          <label className="flex items-start gap-3 text-sm">
+            <input type="checkbox" className="mt-1 size-4 accent-teal" checked={form.acceptTerms} onChange={(e) => setForm({ ...form, acceptTerms: e.target.checked })} />
+            <span>I accept the <Link to="/terms" className="font-semibold underline">Terms of Service</Link> and <Link to="/privacy" className="font-semibold underline">Privacy Notice</Link>.</span>
+          </label>
+          {fe('acceptTerms') && <p className="text-xs font-medium text-tone-danger">{fe('acceptTerms')![0]}</p>}
+          <Button type="submit" className="w-full">Continue</Button>
+        </form>
+      ) : (
+        <form className="space-y-4" onSubmit={(e: FormEvent) => { e.preventDefault(); m.mutate() }} noValidate>
+          <fieldset>
+            <legend className="mb-3 text-sm font-semibold">I’m joining as…</legend>
+            <div className="space-y-3">
+              {([
+                ['Member', Users, 'A member', 'I save in a group someone else runs. I’ll join with an invite link from my organizer.'],
+                ['Organizer', Layers, 'An organizer', 'I run ajo or savings groups, and can also join other people’s groups. Organizers complete a stronger identity check.'],
+              ] as const).map(([value, Icon, title, text]) => (
+                <label key={value} className={`flex cursor-pointer gap-3 rounded-lg border p-4 transition-colors ${form.role === value ? 'border-teal bg-teal-soft ring-1 ring-teal' : 'border-line-strong hover:bg-paper'}`}>
+                  <input type="radio" name="role" value={value} checked={form.role === value} onChange={() => setForm({ ...form, role: value })} className="mt-1 accent-teal" />
+                  <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-lg bg-card text-teal ring-1 ring-line"><Icon className="size-5" /></span>
+                  <span><span className="block font-semibold">{title}</span><span className="text-sm text-ink-soft">{text}</span></span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          {server.role && <p className="text-xs font-medium text-tone-danger">{server.role[0]}</p>}
+          <p className="text-xs text-ink-soft">You can’t switch this yourself later. A member becomes an organizer by passing the organizer identity check.</p>
+          {m.error && !(m.error instanceof ApiError && m.error.status === 400) && <ErrorAlert error={m.error} />}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row">
+            <Button type="button" variant="secondary" onClick={() => setStep(1)} className="sm:flex-1">Back</Button>
+            <Button type="submit" busy={m.isPending} disabled={!form.role} className="sm:flex-[2]">Create account</Button>
+          </div>
+        </form>
+      )}
+      <p className="mt-4 text-center text-sm text-ink-soft">Already have an account? <Link to={withNext('/login', next)} className="font-semibold text-ink underline">Log in</Link></p>
     </AuthShell>
   )
 }
@@ -95,10 +159,10 @@ export function LoginPage() {
     mutationFn: () => api.post<Me>('/auth/login', form),
     onSuccess: (me) => {
       qc.setQueryData(meKey, me)
-      navigate(me.contactVerified ? next : `/verify-account?next=${encodeURIComponent(next)}`)
+      navigate(me.contactVerified ? next || homeFor(me) : withNext('/verify-account', next))
     },
   })
-  if (me && !m.isSuccess) return <Navigate to={next} replace />
+  if (me && !m.isSuccess) return <Navigate to={next || homeFor(me)} replace />
 
   return (
     <AuthShell title="Log in" subtitle="Welcome back. Log in to see your groups.">
@@ -113,7 +177,7 @@ export function LoginPage() {
         <ErrorAlert error={m.error} />
         <Button type="submit" busy={m.isPending} className="w-full">Log in</Button>
       </form>
-      <p className="mt-4 text-center text-sm text-ink-soft">New here? <Link to={`/register?next=${encodeURIComponent(next)}`} className="font-semibold text-ink underline">Create an account</Link></p>
+      <p className="mt-4 text-center text-sm text-ink-soft">New here? <Link to={withNext('/register', next)} className="font-semibold text-ink underline">Create an account</Link></p>
     </AuthShell>
   )
 }
@@ -127,13 +191,13 @@ export function VerifyPage() {
   const [code, setCode] = useState('')
   const verify = useMutation({
     mutationFn: () => api.post<Me>('/auth/verify-contact', { code }),
-    onSuccess: (me) => { qc.setQueryData(meKey, me); navigate(next) },
+    onSuccess: (me) => { qc.setQueryData(meKey, me); navigate(next || onboardingFor(me)) },
   })
   const resend = useMutation({ mutationFn: () => api.post('/auth/resend-verification') })
 
   if (isLoading) return <Loading />
   if (!me) return <Navigate to={`/login?next=${encodeURIComponent('/verify-account')}`} replace />
-  if (me.contactVerified && !verify.isSuccess) return <Navigate to={next} replace />
+  if (me.contactVerified && !verify.isSuccess) return <Navigate to={next || homeFor(me)} replace />
 
   return (
     <AuthShell title="Verify your email" subtitle={`We sent a 6-digit code to ${me.email}. It expires in 15 minutes.`}>

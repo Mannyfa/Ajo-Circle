@@ -65,6 +65,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
             e.Property(x => x.PhoneNumber).HasMaxLength(16);
             e.HasIndex(x => x.PhoneNumber).IsUnique().HasFilter("phone_number IS NOT NULL"); // brief §8.5: unique normalized phone
+            e.Property(x => x.Role).HasConversion<string>().HasMaxLength(20).HasDefaultValue(AccountRole.Member).HasSentinel((AccountRole)(-1));
             e.Property(x => x.IdentityLevel).HasConversion<string>().HasMaxLength(20).HasDefaultValue(IdentityLevel.None).HasSentinel((IdentityLevel)(-1));
             e.Property(x => x.MfaSecretProtected).HasMaxLength(1000);
         });

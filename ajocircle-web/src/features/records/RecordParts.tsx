@@ -6,6 +6,7 @@ import { ApiError } from '../../lib/api'
 import { addDays, formatDate, formatDateTime, formatMoney, lagosToday, parseNairaToKobo } from '../../lib/format'
 import type { DisputeCategory, Money, PaymentInput, PaymentMethod, PaymentRecord } from '../../types/api'
 import { categoryLabel, methodLabel } from './labels'
+import { wsPath } from '../../lib/workspace'
 
 const fieldErrors = (e: unknown, key: string) => (e instanceof ApiError ? e.fieldErrors[key] : undefined)
 
@@ -100,7 +101,7 @@ export function RecordHistory({ records, payout, renderActions, hideDisputeLink 
             {r.reversedAt && <div className="sm:col-span-2"><dt className="inline">Reversed by </dt><dd className="inline">{r.reversedByName}, {formatDateTime(r.reversedAt)} — “{r.reversalReason}”</dd></div>}
             {r.replacesRecordId && <div className="sm:col-span-2"><dd>Corrects an earlier record.</dd></div>}
           </dl>
-          {r.openDisputeId && !hideDisputeLink && <p className="mt-2 text-xs"><Link className="font-semibold underline" to={`/app/disputes/${r.openDisputeId}`}>View open dispute</Link></p>}
+          {r.openDisputeId && !hideDisputeLink && <p className="mt-2 text-xs"><Link className="font-semibold underline" to={wsPath(`/app/disputes/${r.openDisputeId}`)}>View open dispute</Link></p>}
           {renderActions?.(r)}
         </li>
       ))}

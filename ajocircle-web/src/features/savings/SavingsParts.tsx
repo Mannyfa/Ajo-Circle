@@ -7,6 +7,7 @@ import { api } from '../../lib/api'
 import { formatDate, formatMoney } from '../../lib/format'
 import type { GroupDetail, Member, PayoutListItem, SavingsProgress } from '../../types/api'
 import { formatShare, payoutKindLabel } from '../schemes/labels'
+import { wsPath } from '../../lib/workspace'
 
 /** Brief §7.3 figures, kept apart. "Recorded" is the organizer's records — never shown as verified money. */
 export function SavingsProgressCard({ s }: { s: SavingsProgress }) {
@@ -152,7 +153,7 @@ export function OwedBackList({ group }: { group: GroupDetail }) {
         <ul className="divide-y divide-line">
           {q.data.map((p) => (
             <li key={p.id}>
-              <Link to={`/app/groups/${group.id}/payouts/${p.id}`} className="-mx-2 grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg px-2 py-3 hover:bg-ink/5">
+              <Link to={wsPath(`/app/groups/${group.id}/payouts/${p.id}`)} className="-mx-2 grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg px-2 py-3 hover:bg-ink/5">
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{p.recipientName}{p.isYours && <span className="ml-1 text-xs font-normal text-brand-dark">(you)</span>}</p>
                   <p className="text-xs text-ink-soft">{payoutKindLabel[p.kind]} · due {formatDate(p.scheduledDate)}</p>

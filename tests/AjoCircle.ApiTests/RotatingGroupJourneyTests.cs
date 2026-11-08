@@ -198,7 +198,7 @@ public sealed class RotatingGroupJourneyTests(ApiFixture fx)
     public async Task Unverified_users_cannot_create_groups()
     {
         var c = fx.Client();
-        (await c.PostAsJsonAsync("/api/v1/auth/register", new { email = $"u{Guid.NewGuid():N}@example.test", displayName = "Unverified", password = "correct-horse-battery", acceptTerms = true }))
+        (await c.PostAsJsonAsync("/api/v1/auth/register", new { email = $"u{Guid.NewGuid():N}@example.test", displayName = "Unverified", password = "correct-horse-battery", acceptTerms = true, role = "Organizer" }))
             .EnsureSuccessStatusCode();
         var r = await Json(await c.PostAsJsonAsync("/api/v1/groups", new { name = "Nope", rules = Rules(3) }), (HttpStatusCode)422);
         Assert.Equal("organizer_unverified", r.GetProperty("code").GetString());
@@ -221,7 +221,7 @@ public sealed class RotatingGroupJourneyTests(ApiFixture fx)
         var c = fx.Client();
         var r1 = await c.PostAsJsonAsync("/api/v1/auth/login", new { email = "nobody@example.test", password = "whatever-password" });
         var email = $"real{Guid.NewGuid():N}@example.test";
-        (await fx.Client().PostAsJsonAsync("/api/v1/auth/register", new { email, displayName = "Real", password = "correct-horse-battery", acceptTerms = true })).EnsureSuccessStatusCode();
+        (await fx.Client().PostAsJsonAsync("/api/v1/auth/register", new { email, displayName = "Real", password = "correct-horse-battery", acceptTerms = true, role = "Member" })).EnsureSuccessStatusCode();
         var r2 = await c.PostAsJsonAsync("/api/v1/auth/login", new { email, password = "wrong-password-123" });
         Assert.Equal(HttpStatusCode.Unauthorized, r1.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, r2.StatusCode);

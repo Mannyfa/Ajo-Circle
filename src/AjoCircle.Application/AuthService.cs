@@ -13,7 +13,7 @@ public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, IEmai
     public async Task<User> RegisterAsync(RegisterRequest req, CancellationToken ct)
     {
         User.ValidatePassword(req.Password);
-        var user = User.Register(req.Email, req.DisplayName, req.AcceptTerms, clock.UtcNow);
+        var user = User.Register(req.Email, req.DisplayName, req.AcceptTerms, req.Role, clock.UtcNow);
         if (await db.Users.AnyAsync(u => u.Email == user.Email, ct))
             throw new DomainConflictException("account_exists", "An account with this email may already exist. Try signing in or recovering your password.");
 
@@ -21,7 +21,7 @@ public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, IEmai
         db.Users.Add(user);
         var (verification, code) = ContactVerification.Create(user.Id, clock.UtcNow);
         db.ContactVerifications.Add(verification);
-        audit.Write(user.Id, "user.registered", "user", user.Id, null);
+        audit.Write(user.Id, "user.registered", "user", user.Id, null, new { role = user.Role.ToString() });
         await db.SaveChangesAsync(ct);
 
         await email.SendAsync(templates.VerificationCode(user.Email, user.DisplayName, code), ct);
@@ -35,7 +35,7 @@ public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, IEmai
         var user = await db.Users.SingleOrDefaultAsync(u => u.Email == email, ct);
         if (user is null)
         {
-            hasher.Hash(User.Register("timing@example.invalid", "Timing", true, clock.UtcNow), req.Password ?? ""); // equalize timing
+            hasher.Hash(User.Register("timing@example.invalid", "Timing", true, AccountRole.Member, clock.UtcNow), req.Password ?? ""); // equalize timing
             return null;
         }
         if (user.Status != UserStatus.Active || !hasher.Verify(user, req.Password ?? "")) return null;
@@ -137,7 +137,7 @@ public sealed class AuthService(IAppDbContext db, IPasswordHashing hasher, IEmai
     public static readonly TimeSpan OperationsSessionLifetime = TimeSpan.FromHours(12);
 
     private MeDto ToMe(User u) => new(u.Id, u.Email, u.DisplayName, u.IsContactVerified, u.CreatedAt, u.IdentityLevel, u.IsPhoneVerified,
-        u.IsOperations, u.IsMfaEnabled, u.IsOperations && u.IsMfaEnabled && currentUser.MfaVerifiedAt is { } at && clock.UtcNow - at < OperationsSessionLifetime);
+        u.IsOperations, u.IsMfaEnabled, u.IsOperations && u.IsMfaEnabled && currentUser.MfaVerifiedAt is { } at && clock.UtcNow - at < OperationsSessionLifetime, u.Role);
 
     public async Task<MeDto> UpdateProfileAsync(Guid userId, UpdateProfileRequest req, CancellationToken ct)
     {

@@ -21,6 +21,15 @@ public sealed class GroupsController(GroupService groups, InvitationService invi
     [HttpGet("groups")]
     public Task<IReadOnlyList<GroupListItemDto>> List(CancellationToken ct) => groups.ListMineAsync(ct);
 
+    /// <summary>The caller's own contributions across all their groups.</summary>
+    [HttpGet("me/contributions")]
+    public Task<PagedResult<MyObligationDto>> MyContributions([FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default)
+        => groups.MyContributionsAsync(page, pageSize, ct);
+
+    /// <summary>What the caller owes next and the payouts scheduled to them, across all their groups.</summary>
+    [HttpGet("me/schedule")]
+    public Task<MyScheduleDto> MySchedule(CancellationToken ct) => groups.MyScheduleAsync(ct);
+
     [HttpPost("groups/fixed-term")]
     public async Task<ActionResult<GroupDetailDto>> CreateFixedTerm(CreateFixedTermGroupRequest req, CancellationToken ct)
     {

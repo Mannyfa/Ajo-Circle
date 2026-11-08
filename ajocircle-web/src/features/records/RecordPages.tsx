@@ -9,6 +9,7 @@ import type { DisputeCategory, DisputeDetail, DisputeSummary, Money, ObligationD
 import { useGroup } from '../groups/groupContext'
 import { payoutKindLabel } from '../schemes/labels'
 import { CorrectionForm, DisputeForm, PaymentForm, RecordHistory } from './RecordParts'
+import { wsPath } from '../../lib/workspace'
 
 type Kind = 'contribution' | 'payout'
 
@@ -33,12 +34,12 @@ function RecordDetail({ kind, title, subtitle, status, records, disputes, canRec
   })
   const dispute = useMutation({
     mutationFn: (v: { id: string; category: DisputeCategory; description: string }) => api.post<DisputeDetail>(`/${prefix}/${v.id}/dispute`, { category: v.category, description: v.description }),
-    onSuccess: (d) => { invalidate(); navigate(`/app/disputes/${d.summary.id}`) },
+    onSuccess: (d) => { invalidate(); navigate(wsPath(`/app/disputes/${d.summary.id}`)) },
   })
 
   return (
     <div className="space-y-4">
-      <Link to={`/app/groups/${g.id}/${kind === 'contribution' ? 'contributions' : 'payouts'}`} className="inline-block text-sm font-semibold text-ink-soft hover:text-ink">
+      <Link to={wsPath(`/app/groups/${g.id}/${kind === 'contribution' ? 'contributions' : 'payouts'}`)} className="inline-block text-sm font-semibold text-ink-soft hover:text-ink">
         ← {kind === 'contribution' ? 'All contributions' : g.fixedTermRules ? 'Money owed back' : 'Payout schedule'}
       </Link>
       <Card className="space-y-2">
@@ -98,7 +99,7 @@ function RecordDetail({ kind, title, subtitle, status, records, disputes, canRec
           <ul className="divide-y divide-line">
             {disputes.map((d) => (
               <li key={d.id}>
-                <Link to={`/app/disputes/${d.id}`} className="flex items-center justify-between gap-2 py-2 hover:bg-ink/5">
+                <Link to={wsPath(`/app/disputes/${d.id}`)} className="flex items-center justify-between gap-2 py-2 hover:bg-ink/5">
                   <span className="text-sm"><span className="font-mono font-semibold">{d.reference}</span> · raised {formatDateTime(d.raisedAt)}</span>
                   <DisputeStatusBadge status={d.status} />
                 </Link>

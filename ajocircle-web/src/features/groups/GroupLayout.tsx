@@ -10,6 +10,7 @@ import { formatDate, formatDateTime } from '../../lib/format'
 import type { GroupDetail } from '../../types/api'
 import { schemeLabel } from '../schemes/labels'
 import { groupKey, type GroupCtx } from './groupContext'
+import { wsPath } from '../../lib/workspace'
 
 
 export function GroupLayout() {
@@ -18,12 +19,12 @@ export function GroupLayout() {
   const q = useQuery({ queryKey: groupKey(groupId), queryFn: () => api.get<GroupDetail>(`/groups/${groupId}`) })
 
   if (q.isLoading) return <Loading />
-  if (q.error || !q.data) return <><PageHeader title="Group" back={{ to: '/app/groups', label: 'My groups' }} /><ErrorAlert error={q.error} /></>
+  if (q.error || !q.data) return <><PageHeader title="Group" back={{ to: wsPath('/app/groups'), label: 'My groups' }} /><ErrorAlert error={q.error} /></>
 
   const g = q.data
   const refresh = () => qc.invalidateQueries({ queryKey: ['group', groupId] })
   const isOrganizer = g.viewerRole === 'Organizer'
-  const base = `/app/groups/${g.id}`
+  const base = wsPath(`/app/groups/${g.id}`)
   // Underline tabs: the corporate convention for sections of one record.
   const tab = ({ isActive }: { isActive: boolean }) =>
     `-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors ${isActive ? 'border-teal font-semibold text-ink' : 'border-transparent text-ink-soft hover:border-line-strong hover:text-ink'}`
@@ -31,7 +32,7 @@ export function GroupLayout() {
   return (
     <>
       <PageHeader
-        back={{ to: '/app/groups', label: 'My groups' }}
+        back={{ to: wsPath('/app/groups'), label: 'My groups' }}
         title={g.name}
         subtitle={<span className="flex flex-wrap items-center gap-2"><GroupStatusBadge status={g.status} />
           <span>{isOrganizer ? 'You organize this group' : `Organized by ${g.organizerName}`}</span>

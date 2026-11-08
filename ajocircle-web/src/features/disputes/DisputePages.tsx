@@ -9,6 +9,7 @@ import { formatDateTime } from '../../lib/format'
 import type { DisputeDetail, DisputeResolution, DisputeStatus, DisputeSummary } from '../../types/api'
 import { RecordHistory } from '../records/RecordParts'
 import { categoryLabel } from '../records/labels'
+import { wsPath } from '../../lib/workspace'
 
 const resolutionLabel: Record<DisputeResolution, string> = {
   WithdrawnByMember: 'Withdrawn by the member — record accepted',
@@ -18,7 +19,7 @@ const resolutionLabel: Record<DisputeResolution, string> = {
 }
 
 const subjectPath = (d: DisputeSummary) =>
-  `/app/groups/${d.groupId}/${d.recordType === 'ContributionRecord' ? 'contributions' : 'payouts'}/${d.subjectId}`
+  wsPath(`/app/groups/${d.groupId}/${d.recordType === 'ContributionRecord' ? 'contributions' : 'payouts'}/${d.subjectId}`)
 
 export function DisputesPage() {
   const [status, setStatus] = useState<DisputeStatus | 'All'>('Open')
@@ -42,7 +43,7 @@ export function DisputesPage() {
           <ul className="divide-y divide-line">
             {q.data.map((d) => (
               <li key={d.id}>
-                <Link to={`/app/disputes/${d.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-ink/5">
+                <Link to={wsPath(`/app/disputes/${d.id}`)} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-ink/5">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{d.subjectLabel}</p>
                     <p className="truncate text-xs text-ink-soft"><span className="font-mono">{d.reference}</span> · {d.groupName} · {categoryLabel[d.category]} · {d.raisedByYou ? 'raised by you' : `raised by ${d.raisedByName}`}</p>
@@ -64,7 +65,7 @@ export function DisputeDetailPage({ operations = false }: { operations?: boolean
   const qc = useQueryClient()
   const key = ['disputes', operations ? 'ops' : 'detail', disputeId]
   const base = operations ? `/operations/disputes/${disputeId}` : `/disputes/${disputeId}`
-  const back = operations ? { to: '/operations/disputes', label: 'Escalated disputes' } : { to: '/app/disputes', label: 'Disputes' }
+  const back = operations ? { to: '/operations/disputes', label: 'Escalated disputes' } : { to: wsPath('/app/disputes'), label: 'Disputes' }
   const q = useQuery({ queryKey: key, queryFn: () => api.get<DisputeDetail>(base) })
   const [body, setBody] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)

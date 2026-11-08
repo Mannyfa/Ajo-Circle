@@ -10,6 +10,7 @@ import { formatShare } from '../schemes/labels'
 import { GroupTerms, ScheduleTable } from '../schemes/SchemeTerms'
 import { LeaveGroupCard, OwedBackList, RecordExit, SavingsProgressCard, SharesEditor } from '../savings/SavingsParts'
 import { useGroup } from './groupContext'
+import { wsPath } from '../../lib/workspace'
 
 export function GroupOverviewTab() {
   const { group: g, refresh } = useGroup()
@@ -197,7 +198,7 @@ function RotatingPayouts({ active }: { active: boolean }) {
         <ul className="divide-y divide-line">
           {rounds.data.map((r) => (
             <li key={r.id}>
-             <RowLink to={r.payoutId && (g.viewerRole === 'Organizer' || r.payoutIsYours) ? `/app/groups/${g.id}/payouts/${r.payoutId}` : null}>
+             <RowLink to={r.payoutId && (g.viewerRole === 'Organizer' || r.payoutIsYours) ? wsPath(`/app/groups/${g.id}/payouts/${r.payoutId}`) : null}>
               <span className="grid size-9 place-items-center rounded-full bg-paper font-bold tabular-nums">{r.roundNumber}</span>
               <div className="min-w-0">
                 <p className="font-semibold truncate">{r.payoutRecipientName}{r.payoutIsYours && <span className="ml-1 text-xs font-normal text-brand-dark">(your turn)</span>}</p>
@@ -248,7 +249,27 @@ export function GroupContributionsTab() {
         {q.isLoading && <Loading />}
         <ErrorAlert error={q.error} />
         {q.data && (
-          <div className="overflow-x-auto">
+          <ul className="divide-y divide-line md:hidden" aria-label="Contributions">
+            {q.data.items.map((o) => (
+              <li key={o.id}>
+                <Link to={wsPath(`/app/groups/${g.id}/contributions/${o.id}`)} className="-mx-2 flex min-h-14 items-center gap-3 rounded-lg px-2 py-3 hover:bg-paper"
+                  aria-label={`Round ${o.roundNumber} contribution for ${o.memberName}`}>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{isOrganizer ? o.memberName : `Round ${o.roundNumber}`}</span>
+                    <span className="block text-xs text-ink-soft">{isOrganizer ? `Round ${o.roundNumber} · ` : ''}Due {formatDate(o.dueDate)}</span>
+                    <span className="mt-1.5 block"><ObligationStatusBadge status={o.status} /></span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block text-sm font-semibold tabular-nums">{formatMoney(o.amount)}</span>
+                    <span className="mt-1 block text-xs font-semibold text-teal">{isOrganizer && o.status === 'Due' && g.status === 'Active' ? 'Record' : !isOrganizer && o.status === 'RecordedByOrganizer' ? 'Review' : 'View'}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        {q.data && (
+          <div className="hidden overflow-x-auto md:block" role="region" aria-label="Contributions table" tabIndex={0}>
             <table className="w-full min-w-[520px] text-sm">
               <thead className="text-left text-xs uppercase tracking-wider text-ink-soft">
                 <tr><th className="py-2 pr-2">Round</th><th className="py-2 pr-2">Member</th><th className="py-2 pr-2">Due</th><th className="py-2 pr-2 text-right">Amount</th><th className="py-2 pr-2">Status</th><th className="py-2"><span className="sr-only">Open</span></th></tr>
@@ -262,7 +283,7 @@ export function GroupContributionsTab() {
                     <td className="py-2 pr-2 text-right tabular-nums">{formatMoney(o.amount)}</td>
                     <td className="py-2 pr-2"><ObligationStatusBadge status={o.status} /></td>
                     <td className="py-2 text-right">
-                      <Link to={`/app/groups/${g.id}/contributions/${o.id}`} className="inline-flex min-h-9 items-center rounded-lg px-2 font-semibold text-brand-dark hover:bg-ink/5"
+                      <Link to={wsPath(`/app/groups/${g.id}/contributions/${o.id}`)} className="inline-flex min-h-9 items-center rounded-lg px-2 font-semibold text-brand-dark hover:bg-ink/5"
                         aria-label={`Open round ${o.roundNumber} contribution for ${o.memberName}`}>
                         {isOrganizer && o.status === 'Due' && g.status === 'Active' ? 'Record' : !isOrganizer && o.status === 'RecordedByOrganizer' ? 'Review' : 'View'}
                       </Link>

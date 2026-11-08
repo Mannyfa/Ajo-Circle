@@ -6,7 +6,8 @@ import { Alert, Button, Card, ErrorAlert, Field, Loading, Select, TextInput } fr
 import { meKey } from '../../hooks/useMe'
 import { api, ApiError } from '../../lib/api'
 import { formatDateTime } from '../../lib/format'
-import type { IdDocumentType, IdentityLevel, VerificationStatus } from '../../types/api'
+import type { AccountRole, IdDocumentType, IdentityLevel, VerificationStatus } from '../../types/api'
+import { useMe } from '../../hooks/useMe'
 
 const idTypeLabel: Record<IdDocumentType, string> = {
   NationalId: 'National ID (NIN)', InternationalPassport: 'International passport', DriversLicence: 'Driver’s licence', VotersCard: 'Voter’s card',
@@ -17,6 +18,8 @@ const fe = (e: unknown, k: string) => (e instanceof ApiError ? e.fieldErrors[k] 
 
 /** Owner decision 7: members verify phone + one ID; organizers also give BVN and a passport photo. */
 export function VerificationPage() {
+  const { data: me } = useMe()
+  const role = me?.role ?? 'Member'
   const q = useQuery({ queryKey: key, queryFn: () => api.get<VerificationStatus>('/me/verification') })
   if (q.isLoading) return <Loading />
   if (q.error || !q.data) return <ErrorAlert error={q.error} />
@@ -25,20 +28,21 @@ export function VerificationPage() {
 
   return (
     <>
-      <PageHeader title="Verify your identity" subtitle={`Status: ${levelLabel[s.level]}`} />
+      <PageHeader title={role === 'Member' && s.level === 'Member' ? 'Become an organizer' : 'Verify your identity'} subtitle={`Status: ${levelLabel[s.level]}`} />
       <div className="space-y-4">
         <Alert tone="neutral" title="Why we ask">
           Everyone in a group trusts each other with money, so members verify their phone and an ID before joining, and organizers also give
           their BVN and a passport photo before running a group. Our operations team checks each submission. Your documents and numbers are
           encrypted, only the team can view them (every view is logged), and the documents are deleted after the check is decided.
         </Alert>
-        {s.level === 'Organizer' && <Alert tone="info" title="You’re verified as an organizer">You can create, run and join groups.</Alert>}
+        {s.level === 'Organizer' && <Alert tone="info" title="You’re verified as an organizer">You can create, run and join groups from the organizer workspace.</Alert>}
+        {role === 'Member' && s.level === 'Member' && !pending && <Alert tone="info" title="Want to run your own groups?">Submit an organizer check below. When our team approves it, your account moves to the organizer workspace. Your groups and records stay as they are.</Alert>}
         {s.latest?.status === 'Rejected' && <Alert tone="danger" title="Your last check wasn’t approved">{s.latest.rejectionReason} You can submit again below.</Alert>}
         {pending && <Alert tone="info" title="We’re checking your details">Submitted {formatDateTime(s.latest!.submittedAt)}. You’ll get a notification when it’s decided.</Alert>}
         {s.level !== 'Organizer' && !pending && (
           <>
             <PhoneStep s={s} />
-            {s.phoneVerified && <SubmitStep current={s.level} />}
+            {s.phoneVerified && <SubmitStep current={s.level} role={role} />}
           </>
         )}
       </div>
@@ -84,9 +88,9 @@ function PhoneStep({ s }: { s: VerificationStatus }) {
   )
 }
 
-function SubmitStep({ current }: { current: IdentityLevel }) {
+function SubmitStep({ current, role }: { current: IdentityLevel; role: AccountRole }) {
   const qc = useQueryClient()
-  const [level, setLevel] = useState<'Member' | 'Organizer'>(current === 'Member' ? 'Organizer' : 'Member')
+  const [level, setLevel] = useState<'Member' | 'Organizer'>(current === 'Member' || role === 'Organizer' ? 'Organizer' : 'Member')
   const [idType, setIdType] = useState<IdDocumentType>('NationalId')
   const [idNumber, setIdNumber] = useState('')
   const [bvn, setBvn] = useState('')
@@ -114,14 +118,14 @@ function SubmitStep({ current }: { current: IdentityLevel }) {
         <fieldset className="grid gap-2 sm:grid-cols-2">
           <legend className="mb-2 text-sm font-semibold">What do you want to do?</legend>
           {current === 'None' && (
-            <label className={`flex cursor-pointer gap-3 rounded-lg p-3 ${level === 'Member' ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
+            <label className={`flex cursor-pointer gap-3 rounded-lg p-3 ${level === 'Member' ? 'border-2 border-teal bg-teal-soft' : 'border border-line'}`}>
               <input type="radio" name="level" checked={level === 'Member'} onChange={() => setLevel('Member')} className="mt-1 accent-teal" />
               <span><span className="block font-semibold">Join groups</span><span className="text-sm text-ink-soft">Phone and one ID document.</span></span>
             </label>
           )}
-          <label className={`flex cursor-pointer gap-3 rounded-lg p-3 ${level === 'Organizer' ? 'border-2 border-brand bg-brand-soft' : 'border border-line'}`}>
+          <label className={`flex cursor-pointer gap-3 rounded-lg p-3 ${level === 'Organizer' ? 'border-2 border-teal bg-teal-soft' : 'border border-line'}`}>
             <input type="radio" name="level" checked={level === 'Organizer'} onChange={() => setLevel('Organizer')} className="mt-1 accent-teal" />
-            <span><span className="block font-semibold">Run groups too</span><span className="text-sm text-ink-soft">Also your BVN and a passport photograph.</span></span>
+            <span><span className="block font-semibold">{role === 'Member' ? 'Become an organizer' : 'Run groups'}</span><span className="text-sm text-ink-soft">Also your BVN and a passport photograph.</span></span>
           </label>
         </fieldset>
         <div className="grid gap-4 sm:grid-cols-2">

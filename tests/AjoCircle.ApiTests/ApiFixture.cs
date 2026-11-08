@@ -61,15 +61,15 @@ public sealed class ApiFixture : IAsyncLifetime
     }
 
     /// <summary>
-    /// Registers a fresh synthetic user and verifies their email. By default they are also marked identity-verified as an
-    /// organizer directly in the database, so tests about other features aren't blocked by the identity check (which has
+    /// Registers a fresh synthetic user and verifies their email. By default they register as an organizer and are also
+    /// marked identity-verified as an organizer directly in the database (other levels register as members), so tests about other features aren't blocked by the identity check (which has
     /// its own tests that go through the real flow).
     /// </summary>
     public async Task<HttpClient> VerifiedUser(string name, string identityLevel = "Organizer")
     {
         var c = Client();
         var email = $"{name.ToLowerInvariant()}.{Guid.NewGuid():N}@example.test";
-        (await c.PostAsJsonAsync("/api/v1/auth/register", new { email, displayName = name, password = "correct-horse-battery", acceptTerms = true }))
+        (await c.PostAsJsonAsync("/api/v1/auth/register", new { email, displayName = name, password = "correct-horse-battery", acceptTerms = true, role = identityLevel == "Organizer" ? "Organizer" : "Member" }))
             .EnsureSuccessStatusCode();
         (await c.PostAsJsonAsync("/api/v1/auth/verify-contact", new { code = Emails.LatestCode(email) })).EnsureSuccessStatusCode();
         if (identityLevel != "None")

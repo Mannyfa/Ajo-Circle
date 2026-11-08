@@ -55,7 +55,8 @@ public sealed class OperationsAndIdentityTests(ApiFixture fx)
         var unverified = await fx.VerifiedUser("Ifeoma", identityLevel: "None");
         var me = await Json(await unverified.GetAsync("/api/v1/me"), HttpStatusCode.OK);
         Assert.Equal("None", me.GetProperty("identityLevel").GetString());
-        Assert.Equal("organizer_unverified", (await Json(await unverified.PostAsJsonAsync("/api/v1/groups", new { name = "Not yet", rules = Rules }), (HttpStatusCode)422)).GetProperty("code").GetString());
+        Assert.Equal("Member", me.GetProperty("role").GetString());
+        Assert.Equal("organizer_role_required", (await Json(await unverified.PostAsJsonAsync("/api/v1/groups", new { name = "Not yet", rules = Rules }), (HttpStatusCode)422)).GetProperty("code").GetString());
 
         // A member-level user can join but still can't organize.
         var org = await fx.VerifiedUser("Ngozi");
@@ -66,7 +67,7 @@ public sealed class OperationsAndIdentityTests(ApiFixture fx)
 
         var member = await fx.VerifiedUser("Kunle", identityLevel: "Member");
         await Json(await member.PostAsJsonAsync($"/api/v1/invitations/{token}/join", new { acceptedSchemeVersionId = v }), HttpStatusCode.Created);
-        Assert.Equal("organizer_unverified", (await Json(await member.PostAsJsonAsync("/api/v1/groups", new { name = "Mine", rules = Rules }), (HttpStatusCode)422)).GetProperty("code").GetString());
+        Assert.Equal("organizer_role_required", (await Json(await member.PostAsJsonAsync("/api/v1/groups", new { name = "Mine", rules = Rules }), (HttpStatusCode)422)).GetProperty("code").GetString());
     }
 
     [Fact]
@@ -123,7 +124,9 @@ public sealed class OperationsAndIdentityTests(ApiFixture fx)
         Assert.Equal("22233344455", (await Json(await ops.PostAsync($"/api/v1/operations/verifications/{id}/reveal", null), HttpStatusCode.OK)).GetProperty("bvn").GetString());
 
         await Json(await ops.PostAsJsonAsync($"/api/v1/operations/verifications/{id}/approve", new { note = "ID matches photo" }), HttpStatusCode.OK);
-        Assert.Equal("Organizer", (await Json(await applicant.GetAsync("/api/v1/me"), HttpStatusCode.OK)).GetProperty("identityLevel").GetString());
+        var promoted = await Json(await applicant.GetAsync("/api/v1/me"), HttpStatusCode.OK);
+        Assert.Equal("Organizer", promoted.GetProperty("identityLevel").GetString());
+        Assert.Equal("Organizer", promoted.GetProperty("role").GetString()); // an approved organizer check is the only way a member becomes an organizer
         await Json(await applicant.PostAsJsonAsync("/api/v1/groups", new { name = "Now allowed", rules = Rules }), HttpStatusCode.Created);
 
         // Every look at sensitive data is in the audit log.

@@ -35,8 +35,11 @@ public sealed class IdentityGate(IAppDbContext db)
 {
     public async Task RequireAsync(Guid userId, IdentityLevel needed, CancellationToken ct)
     {
-        var level = await db.Users.Where(u => u.Id == userId).Select(u => u.IdentityLevel).SingleAsync(ct);
-        if (level >= needed) return;
+        var u = await db.Users.Where(u => u.Id == userId).Select(u => new { u.IdentityLevel, u.Role }).SingleAsync(ct);
+        if (needed == IdentityLevel.Organizer && u.Role != AccountRole.Organizer)
+            throw new DomainException("organizer_role_required",
+                "Only organizer accounts can create or run groups. To become an organizer, complete organizer verification from your settings.");
+        if (u.IdentityLevel >= needed) return;
         throw new DomainException(needed == IdentityLevel.Organizer ? "organizer_unverified" : "identity_unverified",
             needed == IdentityLevel.Organizer
                 ? "Verify your identity as an organizer (ID, BVN, phone and passport photo) before creating or running a group."

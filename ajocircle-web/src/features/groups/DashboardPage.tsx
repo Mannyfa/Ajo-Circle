@@ -10,6 +10,7 @@ import { api } from '../../lib/api'
 import { formatDate, formatMoney, frequencyNoun } from '../../lib/format'
 import type { DisputeSummary, GroupListItem, GroupStatus, SchemeType } from '../../types/api'
 import { schemeLabel } from '../schemes/labels'
+import { wsPath } from '../../lib/workspace'
 
 const primaryLink = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white shadow-sm hover:bg-brand-dark'
 const shortDate = (iso: string) => formatDate(iso).replace(/^\w+, /, '')
@@ -41,11 +42,11 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader title={firstName ? `Welcome back, ${firstName}` : 'Dashboard'} subtitle="Your groups and what needs your attention today."
-        actions={<Link to="/app/groups/new" className={primaryLink}><Plus aria-hidden className="size-4" />Create group</Link>} />
+        actions={<Link to={wsPath('/app/groups/new')} className={primaryLink}><Plus aria-hidden className="size-4" />Create group</Link>} />
       {q.isLoading && <Loading />}
       <ErrorAlert error={q.error} />
       {q.data && all.length === 0 && (
-        <EmptyState title="No groups yet" icon={Users} action={<Link to="/app/groups/new" className={primaryLink}>Create your first group</Link>}>
+        <EmptyState title="No groups yet" icon={Users} action={<Link to={wsPath('/app/groups/new')} className={primaryLink}>Create your first group</Link>}>
           Create a rotating ajo or a savings group, or open an invitation link from an organizer to join one.
         </EmptyState>
       )}
@@ -62,7 +63,7 @@ export function DashboardPage() {
             <section aria-labelledby="your-groups" className="min-w-0">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 id="your-groups" className="text-sm font-semibold uppercase tracking-wider text-ink-soft">Your groups</h2>
-                <Link to="/app/groups" className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-teal hover:text-teal-dark">View all<ArrowRight aria-hidden className="size-4" /></Link>
+                <Link to={wsPath('/app/groups')} className="inline-flex min-h-11 items-center gap-1 text-sm font-semibold text-teal hover:text-teal-dark">View all<ArrowRight aria-hidden className="size-4" /></Link>
               </div>
               {running.length === 0
                 ? <EmptyState title="No running groups" icon={Layers}>Completed and cancelled groups are on the My Groups page.</EmptyState>
@@ -74,9 +75,9 @@ export function DashboardPage() {
                 <CardHeader title="Needs attention" />
                 {disputes.error != null && <ErrorAlert error={disputes.error} />}
                 <AttentionList items={[
-                  ...openDisputes.slice(0, 3).map((d) => ({ key: d.id, icon: AlertTriangle, to: `/app/disputes/${d.id}`, title: d.subjectLabel, text: `Dispute open · ${d.groupName}` })),
-                  ...drafts.map((g) => ({ key: g.id, icon: FilePen, to: `/app/groups/${g.id}`, title: g.name, text: 'Setup not finished — publish to start inviting' })),
-                  ...inviting.filter((g) => g.memberCount < g.capacity).map((g) => ({ key: g.id, icon: UserPlus, to: `/app/groups/${g.id}/members`, title: g.name, text: `${g.capacity - g.memberCount} place${g.capacity - g.memberCount === 1 ? '' : 's'} left to fill` })),
+                  ...openDisputes.slice(0, 3).map((d) => ({ key: d.id, icon: AlertTriangle, to: wsPath(`/app/disputes/${d.id}`), title: d.subjectLabel, text: `Dispute open · ${d.groupName}` })),
+                  ...drafts.map((g) => ({ key: g.id, icon: FilePen, to: wsPath(`/app/groups/${g.id}`), title: g.name, text: 'Setup not finished — publish to start inviting' })),
+                  ...inviting.filter((g) => g.memberCount < g.capacity).map((g) => ({ key: g.id, icon: UserPlus, to: wsPath(`/app/groups/${g.id}/members`), title: g.name, text: `${g.capacity - g.memberCount} place${g.capacity - g.memberCount === 1 ? '' : 's'} left to fill` })),
                 ]} />
               </Card>
               <Card>
@@ -85,7 +86,7 @@ export function DashboardPage() {
                   <ul className="divide-y divide-line">
                     {upcoming.map((g) => (
                       <li key={g.id}>
-                        <Link to={`/app/groups/${g.id}`} className="-mx-2 flex min-h-12 items-center gap-3 rounded-lg px-2 py-2 hover:bg-paper">
+                        <Link to={wsPath(`/app/groups/${g.id}`)} className="-mx-2 flex min-h-12 items-center gap-3 rounded-lg px-2 py-2 hover:bg-paper">
                           <CalendarClock aria-hidden className="size-5 shrink-0 text-teal" />
                           <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{g.name}</span><span className="block text-xs text-ink-soft">Starts {shortDate(g.startDate)} · {g.memberCount} of {g.capacity} joined</span></span>
                         </Link>
@@ -140,6 +141,8 @@ const statusOrder: GroupStatus[] = ['Active', 'ReadyToStart', 'OpenForJoining', 
 /** Filters live in the URL so they survive refresh and back navigation. */
 export function GroupsPage() {
   const q = useGroups()
+  const { data: me } = useMe()
+  const canCreate = me?.role === 'Organizer'
   const [params, setParams] = useSearchParams()
   const search = params.get('q') ?? ''
   const status = (params.get('status') ?? 'all') as 'all' | GroupStatus
@@ -162,14 +165,20 @@ export function GroupsPage() {
 
   return (
     <>
-      <PageHeader title="My Groups" subtitle="Groups you organize and groups you belong to."
-        actions={<Link to="/app/groups/new" className={primaryLink}><Plus aria-hidden className="size-4" />Create group</Link>} />
+      <PageHeader title="My Groups" subtitle={canCreate ? 'Groups you organize and groups you belong to.' : 'The groups you belong to.'}
+        actions={canCreate ? <Link to={wsPath('/app/groups/new')} className={primaryLink}><Plus aria-hidden className="size-4" />Create group</Link> : undefined} />
       {q.isLoading && <Loading />}
       <ErrorAlert error={q.error} />
       {q.data && q.data.length === 0 && (
-        <EmptyState title="No groups yet" icon={Users} action={<Link to="/app/groups/new" className={primaryLink}>Create your first group</Link>}>
-          Create a group, or open an invitation link from an organizer to join one.
-        </EmptyState>
+        canCreate ? (
+          <EmptyState title="No groups yet" icon={Users} action={<Link to={wsPath('/app/groups/new')} className={primaryLink}>Create your first group</Link>}>
+            Create a group, or open an invitation link from an organizer to join one.
+          </EmptyState>
+        ) : (
+          <EmptyState title="You haven’t joined a group yet" icon={Users} action={<Link to="/member/dashboard" className={primaryLink}>Enter an invite link</Link>}>
+            Ask your organizer for their group’s invite link.
+          </EmptyState>
+        )
       )}
       {q.data && q.data.length > 0 && (
         <div className="space-y-6">
@@ -204,7 +213,7 @@ export function GroupsPage() {
           </div>
           {filtered.length === 0 && <EmptyState title="No groups match your filters" icon={Search} />}
           {organizing.length > 0 && <GroupSection title="Groups you organize" groups={organizing} />}
-          {memberOf.length > 0 && <GroupSection title="Groups you’re a member of" groups={memberOf} />}
+          {memberOf.length > 0 && <GroupSection title={canCreate ? 'Groups you’re a member of' : 'Your groups'} groups={memberOf} />}
         </div>
       )}
     </>
@@ -224,7 +233,7 @@ function GroupCard({ g }: { g: GroupListItem }) {
   const Icon = g.schemeType === 'RotatingAjo' ? Repeat : PiggyBank
   const fill = Math.min(100, Math.round((g.memberCount / Math.max(1, g.capacity)) * 100))
   return (
-    <Link to={`/app/groups/${g.id}`}
+    <Link to={wsPath(`/app/groups/${g.id}`)}
       className="group flex h-full flex-col rounded-[var(--radius-card)] border border-line bg-card p-4 shadow-[var(--shadow-card)] transition-[border-color,box-shadow] hover:border-teal/40 hover:shadow-[var(--shadow-raised)]">
       <div className="flex items-start gap-3">
         <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg bg-teal-soft text-teal"><Icon className="size-5" /></span>

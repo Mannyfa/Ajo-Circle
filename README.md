@@ -189,6 +189,22 @@ cd ajocircle-web && npm run build && npm run lint
   Status badges still pair an icon with text and keep green for provider-verified only. Less-used screens (create
   wizard, verification, reports, operations) load on demand.
 
+## Slice 7 — brand guide, public site, and separate organizer and member workspaces
+
+- **Brand** from the UI specification §4: Midnight Navy, Deep Teal, Mint accent (decorative only), Cloud White canvas,
+  Slate muted text, amber for warnings only, Inter. Tokens live in `ajocircle-web/src/styles/index.css`; the working
+  name, pricing copy and social links in `ajocircle-web/src/app/brand.ts`.
+- **Public website** (spec §5): homepage sections in the specified order, How It Works, Features, For Organizers,
+  Pricing (no invented price), About, Contact, and draft Privacy, Terms and financial-services disclaimer pages marked
+  as pending legal review. 403/404 pages and a global error boundary.
+- **Two workspaces** (owner decision 8 below): organizers in `/app`, members in `/member` with Dashboard, My Groups,
+  Contributions (across all groups), Schedule, Notifications and Disputes. Opening the other workspace's URL redirects
+  to the equivalent page, so email links keep working. New API: `GET /api/v1/me/contributions` and
+  `GET /api/v1/me/schedule` return only the caller's own rows.
+- **Sign-up** is two steps (details, then Organizer or Member), followed by email verification and a role-specific
+  onboarding checklist (`/onboarding/organizer`, `/onboarding/member`). Members can paste an invite link or code.
+- **Navigation** follows the spec's breakpoints: desktop sidebar, tablet icon rail, phone bottom tabs plus a More drawer.
+
 ## Product decisions from the owner (7 Nov 2026)
 
 1. **Shared-target savings: the organizer (group admin) decides how the money is shared.** To meet brief §7.3 ("store
@@ -209,6 +225,11 @@ cd ajocircle-web && npm run build && npm run lint
 7. **Identity verification before anyone can act.** Organizers: government ID document, BVN, phone number and passport
    photo, reviewed by the operations team. Members: phone number and one ID document. Unverified users can sign in and
    look around but can't create, run or join groups.
+8. **Organizers and members have separate accounts and workspaces.** The role is chosen at sign-up and enforced by the
+   server; only organizer accounts can create or run groups. **Organizers may also join other organizers' groups** as
+   members. **A member becomes an organizer only by applying**: they submit the organizer identity check and, when the
+   operations team approves it, the account becomes an organizer account (it keeps its groups and records). Nobody can
+   choose or change their role themselves after sign-up.
 
 ## Still open (brief §16.3 — not chosen in code)
 
@@ -220,7 +241,7 @@ cd ajocircle-web && npm run build && npm run lint
   only synthetic data in development.
 
 
-Payment partner and fund flow · organizer/member identity verification · post-start amendment approval threshold ·
+Payment partner and fund flow · post-start amendment approval threshold ·
 default rules (what happens when a member stops paying) · fees · email/SMS vendor · hosting ·
 when a rotating round or group counts as **completed**.
 

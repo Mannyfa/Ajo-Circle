@@ -12,10 +12,13 @@ export type PayoutStatus = 'Scheduled' | 'RecordedByOrganizer' | 'ConfirmedByRec
 export type ViewerRole = 'Organizer' | 'Member'
 
 export type IdentityLevel = 'None' | 'Member' | 'Organizer'
+export type AccountRole = 'Member' | 'Organizer'
+
 export type Me = {
   id: string; email: string; displayName: string; contactVerified: boolean; createdAt: string
   identityLevel: IdentityLevel; phoneVerified: boolean
   isOperations: boolean; mfaEnabled: boolean; operationsSessionActive: boolean
+  role: AccountRole
 }
 
 export type RotatingRules = {
@@ -193,3 +196,8 @@ export type NotificationItem = {
 }
 export type NotificationPage = { items: NotificationItem[]; page: number; pageSize: number; total: number; unread: number }
 export type Settings = { emailNotifications: boolean }
+
+/** Member workspace: the caller's own rows across all their groups. */
+export type MyObligation = { id: string; groupId: string; groupName: string; roundNumber: number; amount: Money; dueDate: string; status: ObligationStatus }
+export type MyPayout = { id: string; groupId: string; groupName: string; kind: PayoutKind; roundNumber: number | null; amount: Money; scheduledDate: string; status: PayoutStatus }
+export type MySchedule = { contributions: MyObligation[]; payouts: MyPayout[] }

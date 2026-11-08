@@ -88,7 +88,7 @@ public class OperationsTests
 
     private static User UserWith(bool phone)
     {
-        var u = User.Register($"u{Guid.NewGuid():N}@example.test", "Test User", true, Now);
+        var u = User.Register($"u{Guid.NewGuid():N}@example.test", "Test User", true, AccountRole.Member, Now);
         u.MarkContactVerified(Now);
         if (phone) u.SetVerifiedPhone("+2348031234567", Now);
         return u;

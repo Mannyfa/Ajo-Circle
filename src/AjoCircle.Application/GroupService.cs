@@ -292,6 +292,51 @@ public sealed class GroupService(IAppDbContext db, ICurrentUser currentUser, IAp
             new MoneyDto(x.o.AmountMinor, x.o.Currency), x.o.DueDate, x.o.Status)).ToList(), page, pageSize, total);
     }
 
+    /// <summary>The caller's own contributions across every group they belong to (member workspace). Never other members' rows.</summary>
+    public async Task<PagedResult<MyObligationDto>> MyContributionsAsync(int page, int pageSize, CancellationToken ct)
+    {
+        var me = Me;
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 200);
+        var q = from o in db.ContributionObligations
+                join m in db.GroupMemberships on o.MembershipId equals m.Id
+                join g in db.Groups on o.GroupId equals g.Id
+                join r in db.SchemeRounds on o.RoundId equals r.Id
+                where m.UserId == me && o.Status != ObligationStatus.Cancelled
+                select new { o, g.Name, r.RoundNumber };
+        var total = await q.CountAsync(ct);
+        var rows = await q.OrderByDescending(x => x.o.DueDate).ThenBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new PagedResult<MyObligationDto>(rows.Select(x => new MyObligationDto(x.o.Id, x.o.GroupId, x.Name, x.RoundNumber,
+            new MoneyDto(x.o.AmountMinor, x.o.Currency), x.o.DueDate, x.o.Status)).ToList(), page, pageSize, total);
+    }
+
+    /// <summary>
+    /// What the caller still owes (contributions with nothing recorded yet, including overdue ones) and the payouts or
+    /// refunds scheduled to them, across all their groups. Schedule only: nothing here means money has moved.
+    /// </summary>
+    public async Task<MyScheduleDto> MyScheduleAsync(CancellationToken ct)
+    {
+        var me = Me;
+        var owed = await (from o in db.ContributionObligations
+                          join m in db.GroupMemberships on o.MembershipId equals m.Id
+                          join g in db.Groups on o.GroupId equals g.Id
+                          join r in db.SchemeRounds on o.RoundId equals r.Id
+                          where m.UserId == me && (o.Status == ObligationStatus.Due || o.Status == ObligationStatus.Disputed)
+                          orderby o.DueDate, g.Name
+                          select new { o, g.Name, r.RoundNumber }).Take(100).ToListAsync(ct);
+        var payouts = await (from p in db.Payouts
+                             join m in db.GroupMemberships on p.RecipientMembershipId equals m.Id
+                             join g in db.Groups on p.GroupId equals g.Id
+                             join r in db.SchemeRounds on p.RoundId equals (Guid?)r.Id into rr
+                             from r in rr.DefaultIfEmpty()
+                             where m.UserId == me && p.Status != PayoutStatus.ConfirmedByRecipient
+                             orderby p.ScheduledDate
+                             select new { p, g.Name, Round = (int?)r.RoundNumber }).Take(100).ToListAsync(ct);
+        return new MyScheduleDto(
+            owed.Select(x => new MyObligationDto(x.o.Id, x.o.GroupId, x.Name, x.RoundNumber, new MoneyDto(x.o.AmountMinor, x.o.Currency), x.o.DueDate, x.o.Status)).ToList(),
+            payouts.Select(x => new MyPayoutDto(x.p.Id, x.p.GroupId, x.Name, x.p.Kind, x.Round, new MoneyDto(x.p.AmountMinor, x.p.Currency), x.p.ScheduledDate, x.p.Status)).ToList());
+    }
+
     public async Task<PagedResult<AuditLogDto>> AuditLogsAsync(Guid groupId, int page, int pageSize, CancellationToken ct)
     {
         var g = await OrganizerGroupAsync(groupId, ct, track: false);

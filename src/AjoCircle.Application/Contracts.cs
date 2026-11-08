@@ -4,14 +4,15 @@ using AjoCircle.Domain.Schemes;
 namespace AjoCircle.Application.Contracts;
 
 // ---- Auth ----
-public sealed record RegisterRequest(string Email, string DisplayName, string Password, bool AcceptTerms);
+public sealed record RegisterRequest(string Email, string DisplayName, string Password, bool AcceptTerms, Domain.Identity.AccountRole? Role);
 public sealed record LoginRequest(string Email, string Password);
 public sealed record VerifyContactRequest(string Code);
 public sealed record UpdateProfileRequest(string DisplayName);
 public sealed record ForgotPasswordRequest(string Email);
 public sealed record ResetPasswordRequest(string Token, string NewPassword);
 public sealed record MeDto(Guid Id, string Email, string DisplayName, bool ContactVerified, DateTimeOffset CreatedAt,
-    Domain.Identity.IdentityLevel IdentityLevel, bool PhoneVerified, bool IsOperations, bool MfaEnabled, bool OperationsSessionActive);
+    Domain.Identity.IdentityLevel IdentityLevel, bool PhoneVerified, bool IsOperations, bool MfaEnabled, bool OperationsSessionActive,
+    Domain.Identity.AccountRole Role);
 
 // ---- Money ----
 public sealed record MoneyDto(long AmountMinor, string Currency);
@@ -95,6 +96,13 @@ public sealed record RoundDto(Guid Id, int RoundNumber, DateOnly ContributionDue
 
 public sealed record ObligationDto(Guid Id, int RoundNumber, string MemberName, Guid MembershipId, MoneyDto Amount,
     DateOnly DueDate, ObligationStatus Status);
+
+/// <summary>One of the caller's own contributions, from any group they belong to (member workspace).</summary>
+public sealed record MyObligationDto(Guid Id, Guid GroupId, string GroupName, int RoundNumber, MoneyDto Amount, DateOnly DueDate, ObligationStatus Status);
+/// <summary>A payout or refund scheduled to the caller.</summary>
+public sealed record MyPayoutDto(Guid Id, Guid GroupId, string GroupName, PayoutKind Kind, int? RoundNumber, MoneyDto Amount, DateOnly ScheduledDate, PayoutStatus Status);
+/// <summary>What the caller owes and is owed next. Dates are schedule dates only — the app moves no money.</summary>
+public sealed record MyScheduleDto(IReadOnlyList<MyObligationDto> Contributions, IReadOnlyList<MyPayoutDto> Payouts);
 
 public sealed record AuditLogDto(Guid Id, string Action, string EntityType, Guid EntityId, string? ActorName, string? Metadata, DateTimeOffset CreatedAt);
 

@@ -7,6 +7,7 @@ import { api } from '../../lib/api'
 import type { JoinResult, PublicInvitation } from '../../types/api'
 import { schemeLabel } from '../schemes/labels'
 import { GroupTerms } from '../schemes/SchemeTerms'
+import { wsPath } from '../../lib/workspace'
 
 /** Public invitation view: safe group details only, no member list (brief §4.4). */
 export function JoinPage() {
@@ -18,7 +19,7 @@ export function JoinPage() {
   const q = useQuery({ queryKey: ['invitation', token, me?.id ?? 'anon'], queryFn: () => api.get<PublicInvitation>(`/invitations/${token}`), retry: false })
   const join = useMutation({
     mutationFn: () => api.post<JoinResult>(`/invitations/${token}/join`, { acceptedSchemeVersionId: q.data!.schemeVersionId }),
-    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ['groups'] }); navigate(`/app/groups/${r.groupId}`) },
+    onSuccess: (r) => { qc.invalidateQueries({ queryKey: ['groups'] }); navigate(wsPath(`/app/groups/${r.groupId}`)) },
   })
   const here = `/join/${token}`
 
@@ -64,7 +65,7 @@ export function JoinPage() {
           {me?.contactVerified && me.identityLevel === 'None' && (
             <Alert tone="warn" title="Verify your identity to join">
               Members verify their phone number and one ID document before joining a group, so everyone knows who they’re saving with.{' '}
-              <Link to="/app/verification" className="font-semibold underline">Verify now</Link>, then come back to this link.
+              <Link to={wsPath('/app/verification')} className="font-semibold underline">Verify now</Link>, then come back to this link.
             </Alert>
           )}
           {me?.contactVerified && me.identityLevel !== 'None' && (

@@ -7,6 +7,7 @@ import { Button, Card, EmptyState, ErrorAlert, Loading } from '../../components/
 import { api } from '../../lib/api'
 import { formatDateTime } from '../../lib/format'
 import type { NotificationItem, NotificationPage, Settings } from '../../types/api'
+import { wsPath } from '../../lib/workspace'
 
 const notificationsKey = ['notifications'] as const
 
@@ -19,7 +20,7 @@ export function NotificationBell() {
   })
   const n = q.data?.unread ?? 0
   return (
-    <Link to="/app/notifications" className="relative grid size-10 place-items-center rounded-lg text-ink-soft hover:bg-ink/5 hover:text-ink"
+    <Link to={wsPath('/app/notifications')} className="relative grid size-10 place-items-center rounded-lg text-ink-soft hover:bg-ink/5 hover:text-ink"
       aria-label={n > 0 ? `Notifications, ${n} unread` : 'Notifications'}>
       <Bell aria-hidden className="size-5" />
       {n > 0 && (
