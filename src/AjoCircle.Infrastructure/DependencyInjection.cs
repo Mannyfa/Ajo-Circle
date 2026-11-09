@@ -37,8 +37,14 @@ public static class DependencyInjection
         else services.AddSingleton<IEmailSender, UnconfiguredEmailSender>();
 
         // Sensitive values (TOTP secrets, ID numbers, BVN, identity documents) are encrypted with ASP.NET Core Data
-        // Protection. In production the key ring must live in shared, backed-up storage (see README).
-        services.AddDataProtection().SetApplicationName("AjoCircle");
+        // Protection. The key ring lives in PostgreSQL, so it survives restarts and redeploys and is covered by the
+        // database backups. Optionally the keys themselves are encrypted with a certificate (DataProtection:Certificate*),
+        // so a stolen database dump alone can't decrypt anything. Keep the certificate backed up separately.
+        var dp = services.AddDataProtection().SetApplicationName("AjoCircle").PersistKeysToDbContext<AppDbContext>();
+        var certPath = config["DataProtection:CertificatePath"];
+        if (!string.IsNullOrWhiteSpace(certPath))
+            dp.ProtectKeysWithCertificate(System.Security.Cryptography.X509Certificates.X509CertificateLoader
+                .LoadPkcs12FromFile(certPath, config["DataProtection:CertificatePassword"]));
         services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
         services.AddSingleton(config.GetSection(AjoCircle.Application.IdentityOptions.Section).Get<AjoCircle.Application.IdentityOptions>() ?? new AjoCircle.Application.IdentityOptions());
         services.AddSingleton(config.GetSection(DisputeOptions.Section).Get<DisputeOptions>() ?? new DisputeOptions());

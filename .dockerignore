@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/TestResults/
+.git/
+.vs/
+.vscode/
+.idea/
+tests/
+deploy/backups/
+deploy/secrets/
+deploy/.env
+*.local

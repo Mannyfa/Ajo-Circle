@@ -52,6 +52,13 @@ dotnet test tests/AjoCircle.ApiTests       # requires Docker running
 cd ajocircle-web && npm run build && npm run lint
 ```
 
+## Deploy
+
+`deploy/` holds the production setup: Dockerfiles for the API and web app, an nginx config, a Compose file with
+PostgreSQL, nightly backups and an optional Cloudflare Tunnel, and `.env.example`. Read
+[deploy/README.md](deploy/README.md) first. It covers Cloudflare, rate limits behind a proxy, encryption keys,
+backups and restore checks, and granting operations accounts on the server.
+
 ## Slice 1 — rotating groups
 
 - Register → verify email (6-digit code, hashed, 5 attempts, 15 min) → sign in. HttpOnly SameSite=Strict session cookie,
@@ -171,9 +178,9 @@ cd ajocircle-web && npm run build && npm run lint
   (`Disputes:EscalationAfterDays`). "Record stands" closes the dispute and the record can't be disputed again;
   "needs correcting" leaves it with the organizer, whose correction closes it.
 - Development: SMS codes go to the Mailpit inbox as emails to `sms-<number>@sms.test`.
-- **Production note:** the Data Protection key ring encrypts identity data and signs session cookies. It must be
-  persisted to shared, backed-up storage (e.g. the database or a key vault) before real data is stored — if the keys
-  are lost, encrypted documents can't be read. In development it lives in your user profile.
+- **Key ring:** the Data Protection keys that encrypt identity data and sign session cookies are stored in
+  PostgreSQL (`data_protection_keys`), so they survive restarts and redeploys and are in every backup. Losing that
+  table makes encrypted data unreadable. In production, also encrypt the keys with a certificate (`deploy/README.md`).
 
 ## Slice 6 — reports, exports and a corporate UI
 
@@ -249,7 +256,7 @@ when a rotating round or group counts as **completed**.
 
 ## Next slices (brief §17.1)
 
-1. Persist the Data Protection key ring; choose a licensed BVN/ID verification provider and SMS vendor (open items).
+1. Choose a licensed BVN/ID verification provider and SMS vendor (open items).
 2. Organizer reminder settings (overdue alerts, timing); reminders for money owed back.
 3. Idempotency keys on record-creating requests; the automated 10-member end-to-end journey (brief §13.4).
 4. Rotating round/group completion rules once the open question above is decided.

@@ -1,0 +1,103 @@
+# AjoCircle production stack: PostgreSQL + API + web (nginx) + nightly database backups, and optionally a
+# Cloudflare Tunnel. Run from the repository root:
+#   docker compose -f deploy/docker-compose.prod.yml --env-file deploy/.env up -d --build
+# Add `--profile tunnel` to also start cloudflared. See deploy/README.md before the first run.
+name: ajocircle
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ajocircle
+      POSTGRES_USER: ajocircle
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Not published to the host: only the API and the backup job can reach it.
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ajocircle -d ajocircle"]
+      interval: 10s
+      retries: 10
+
+  api:
+    build: { context: .., dockerfile: deploy/api.Dockerfile }
+    image: ajocircle-api
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      ConnectionStrings__AjoCircle: Host=postgres;Port=5432;Database=ajocircle;Username=ajocircle;Password=${POSTGRES_PASSWORD}
+      Database__MigrateOnStartup: "true"
+      App__PublicBaseUrl: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL in deploy/.env}
+      Email__Smtp__Host: ${SMTP_HOST:-}
+      Email__Smtp__Port: ${SMTP_PORT:-587}
+      Email__Smtp__EnableSsl: ${SMTP_ENABLE_SSL:-true}
+      Email__Smtp__Username: ${SMTP_USERNAME:-}
+      Email__Smtp__Password: ${SMTP_PASSWORD:-}
+      Email__Smtp__From: ${SMTP_FROM:-}
+      ReverseProxy__Enabled: "true"
+      ReverseProxy__ClientIpHeader: ${CLIENT_IP_HEADER:-X-Forwarded-For}
+      # The web container is the only proxy the API trusts; this is the private range of the compose network.
+      ReverseProxy__TrustedNetworks__0: 172.16.0.0/12
+      ReverseProxy__TrustedNetworks__1: 192.168.0.0/16
+      ReverseProxy__TrustedNetworks__2: 10.0.0.0/8
+      DataProtection__CertificatePath: ${DATA_PROTECTION_CERT_PATH:-}
+      DataProtection__CertificatePassword: ${DATA_PROTECTION_CERT_PASSWORD:-}
+    volumes:
+      - ./secrets:/run/secrets/ajocircle:ro
+    # Not published: the API is reached only through the web container.
+    networks: [backend, frontend]
+
+  web:
+    build: { context: .., dockerfile: deploy/web.Dockerfile }
+    image: ajocircle-web
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    networks: [frontend]
+
+  backup:
+    image: postgres:17
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      PGHOST: postgres
+      PGUSER: ajocircle
+      PGDATABASE: ajocircle
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ${BACKUP_DIR:-./backups}:/backups
+    networks: [backend]
+    # One compressed dump a day; dumps older than KEEP_DAYS are removed. Copy /backups off this machine too.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        while true; do
+          f=/backups/ajocircle-$$(date -u +%Y%m%dT%H%M%SZ).dump
+          if pg_dump -Fc -f "$$f.partial"; then mv "$$f.partial" "$$f"; echo "backup ok $$f"; else rm -f "$$f.partial"; echo "backup FAILED"; fi
+          find /backups -name 'ajocircle-*.dump' -mtime +$$KEEP_DAYS -delete
+          sleep 86400
+        done
+
+  cloudflared:
+    image: cloudflare/cloudflared:2025.11.1
+    profiles: [tunnel]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on: [web]
+    networks: [frontend]
+
+networks:
+  frontend: {}
+  backend: {}
+
+volumes:
+  pgdata: {}

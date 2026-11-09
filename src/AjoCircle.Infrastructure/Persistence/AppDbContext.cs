@@ -4,13 +4,14 @@ using AjoCircle.Domain.Groups;
 using AjoCircle.Domain.Identity;
 using AjoCircle.Domain.Notifications;
 using AjoCircle.Domain.Records;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 using Microsoft.EntityFrameworkCore.Storage;
 
 namespace AjoCircle.Infrastructure.Persistence;
 
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options), IAppDbContext
+public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options), IAppDbContext, IDataProtectionKeyContext
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<ContactVerification> ContactVerifications => Set<ContactVerification>();
@@ -33,6 +34,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<IdentitySubmission> IdentitySubmissions => Set<IdentitySubmission>();
     public DbSet<IdentityDocument> IdentityDocuments => Set<IdentityDocument>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    /// <summary>ASP.NET Core Data Protection key ring. Losing these rows makes encrypted identity data unreadable.</summary>
+    public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken ct = default) => Database.BeginTransactionAsync(ct);
 

@@ -6,6 +6,7 @@ using AjoCircle.Application;
 using AjoCircle.Infrastructure;
 using AjoCircle.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -56,6 +57,23 @@ builder.Services.AddRateLimiter(o =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = disputeLimit, Window = TimeSpan.FromMinutes(1) }));
 });
 
+// Behind a reverse proxy (Cloudflare, nginx, a platform load balancer) the TCP peer is the proxy, so every visitor
+// would share one rate-limit bucket. ReverseProxy:Enabled reads the visitor's address from a forwarded header, but
+// only when the request came from a trusted network, so a client can't spoof its address by sending the header itself.
+var proxy = builder.Configuration.GetSection("ReverseProxy");
+var proxyEnabled = proxy.GetValue("Enabled", false);
+if (proxyEnabled)
+{
+    builder.Services.Configure<ForwardedHeadersOptions>(o =>
+    {
+        o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        o.ForwardedForHeaderName = proxy["ClientIpHeader"] is { Length: > 0 } h ? h : ForwardedHeadersDefaults.XForwardedForHeaderName;
+        o.ForwardLimit = proxy.GetValue("ForwardLimit", 1);
+        foreach (var cidr in proxy.GetSection("TrustedNetworks").Get<string[]>() ?? [])
+            o.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(cidr.Trim()));
+    });
+}
+
 var app = builder.Build();
 
 // Staff accounts are granted from the command line, never through the web API:
@@ -83,6 +101,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", false))
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
 }
 
+if (proxyEnabled) app.UseForwardedHeaders(); // first, so rate limits, HSTS and logs see the real client
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseMiddleware<SecurityHeadersMiddleware>();
@@ -94,7 +113,18 @@ app.UseMiddleware<CsrfHeaderMiddleware>();
 app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
+// Liveness: the process is up. Readiness: it can also reach PostgreSQL, so a load balancer or uptime monitor stops
+// sending traffic (or alerts) when the database is down. Neither response says anything about the failure.
 app.MapGet("/api/v1/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/v1/health/ready", async (AppDbContext db, CancellationToken ct) =>
+{
+    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+    timeout.CancelAfter(TimeSpan.FromSeconds(3));
+    bool up;
+    try { up = await db.Database.CanConnectAsync(timeout.Token); } catch { up = false; }
+    return up ? Results.Ok(new { status = "ok" })
+              : Results.Json(new { status = "unavailable" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+});
 
 app.Run();
 return 0;
